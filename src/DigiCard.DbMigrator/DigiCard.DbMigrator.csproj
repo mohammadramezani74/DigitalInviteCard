@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType></PropertyGroup><ItemGroup>
+<ProjectReference Include="../Modules/DigiCard.Modules.Accounts/DigiCard.Modules.Accounts.csproj" />
+<ProjectReference Include="../Modules/DigiCard.Modules.Templates/DigiCard.Modules.Templates.csproj" />
+<ProjectReference Include="../Modules/DigiCard.Modules.Invitations/DigiCard.Modules.Invitations.csproj" />
+<PackageReference Include="Microsoft.EntityFrameworkCore.Design"><PrivateAssets>all</PrivateAssets></PackageReference>
+</ItemGroup></Project>

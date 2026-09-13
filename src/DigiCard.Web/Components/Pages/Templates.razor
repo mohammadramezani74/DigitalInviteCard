@@ -1,0 +1,17 @@
+@page "/templates"
+@using DigiCard.Contracts.Templates
+@using DigiCard.Web.Client.Components
+@inject ITemplateCatalog Catalog
+<PageTitle>قالب‌های دعوت | دیجی‌کارت</PageTitle>
+<h1>شروعی به سلیقه شما</h1>
+<div class="feature-grid">
+@foreach (var template in templates)
+{
+    <section><CardPreview BrideName="سارا" GroomName="علی" Message="با حضور شما شادی ما کامل می‌شود" Accent="@template.Accent" />
+    <h2>@template.Name</h2><a href="@($"/studio?TemplateId={template.Id}")">شخصی‌سازی کارت</a></section>
+}
+</div>
+@code {
+    private IReadOnlyList<TemplateSummary> templates = [];
+    protected override async Task OnInitializedAsync() => templates = await Catalog.ListAsync(CancellationToken.None);
+}

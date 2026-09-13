@@ -1,0 +1,74 @@
+@page "/studio"
+@using System.Net.Http.Json
+@using DigiCard.Contracts.Invitations
+@using DigiCard.Contracts.Templates
+@using DigiCard.Web.Client.Components
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@inject HttpClient Http
+@inject NavigationManager Navigation
+<PageTitle>استودیوی کارت | دیجی‌کارت</PageTitle>
+<h1>دعوت‌نامه شما</h1>
+<p>متن را تغییر دهید و نتیجه را همان لحظه ببینید.</p>
+@if (templates is null)
+{
+    <p role="status">@(error ?? "در حال دریافت قالب‌ها…")</p>
+}
+else
+{
+    <div class="studio-grid">
+        <EditForm Model="model" OnValidSubmit="SaveAsync" FormName="draft">
+            <DataAnnotationsValidator /><ValidationSummary />
+            <label for="template">قالب</label>
+            <InputSelect id="template" @bind-Value="model.TemplateId">
+                @foreach (var t in templates) { <option value="@t.Id">@t.Name</option> }
+            </InputSelect>
+            <label for="title">عنوان پروژه</label><InputText id="title" @bind-Value="model.Title" maxlength="100" />
+            <label for="bride">نام عروس</label><input id="bride" @bind="model.BrideName" @bind:event="oninput" maxlength="80" />
+            <label for="groom">نام داماد</label><input id="groom" @bind="model.GroomName" @bind:event="oninput" maxlength="80" />
+            <label for="message">متن دعوت</label><textarea id="message" @bind="model.Message" @bind:event="oninput" maxlength="1000"></textarea>
+            <button type="submit" disabled="@saving">@(saving ? "در حال ذخیره…" : "ساخت پیش‌نویس")</button>
+            @if (error is not null) { <p role="alert">@error</p> }
+        </EditForm>
+        <CardPreview BrideName="@model.BrideName" GroomName="@model.GroomName" Message="@model.Message" Accent="@Accent" />
+    </div>
+}
+@code {
+    [SupplyParameterFromQuery] public Guid? TemplateId { get; set; }
+    private CreateDraftRequest model = new();
+    private List<TemplateSummary>? templates;
+    private bool saving;
+    private string? error;
+    private string Accent => templates?.FirstOrDefault(t => t.Id == model.TemplateId)?.Accent ?? "#52796f";
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            templates = await Http.GetFromJsonAsync<List<TemplateSummary>>("api/templates") ?? [];
+            model.TemplateId = templates.FirstOrDefault(t => t.Id == TemplateId)?.Id ?? templates.FirstOrDefault()?.Id ?? Guid.Empty;
+        }
+        catch (HttpRequestException) { error = "دریافت قالب‌ها انجام نشد. صفحه را دوباره باز کنید."; }
+    }
+    private async Task SaveAsync()
+    {
+        if (saving) return;
+        saving = true; error = null;
+        try
+        {
+            var csrf = await Http.GetFromJsonAsync<CsrfToken>("api/antiforgery");
+            using var request = new HttpRequestMessage(HttpMethod.Post, "api/invitations/") { Content = JsonContent.Create(model) };
+            request.Headers.Add("X-CSRF-TOKEN", csrf!.Token);
+            using var response = await Http.SendAsync(request);
+            if (response.IsSuccessStatusCode)
+            {
+                var draft = await response.Content.ReadFromJsonAsync<DraftResponse>();
+                Navigation.NavigateTo($"/drafts/{draft!.Id}");
+            }
+            else { error = "ذخیره انجام نشد. اطلاعات و وضعیت ورود خود را بررسی کنید."; }
+        }
+        catch (HttpRequestException) { error = "ارتباط برقرار نشد. دوباره تلاش کنید."; }
+        finally { saving = false; }
+    }
+    private sealed record CsrfToken(string Token);
+}

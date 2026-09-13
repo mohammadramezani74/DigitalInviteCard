@@ -1,0 +1,15 @@
+<article class="invitation-preview" style="--accent:@Accent" aria-label="پیش‌نمایش کارت دعوت">
+    <span class="ornament" aria-hidden="true">❧</span>
+    <p>آغاز یک زندگی، کنار هم</p>
+    <h2>@(string.IsNullOrWhiteSpace(BrideName) ? "نام عروس" : BrideName)
+        <span class="ampersand">و</span>
+        @(string.IsNullOrWhiteSpace(GroomName) ? "نام داماد" : GroomName)</h2>
+    <p class="invitation-message">@Message</p>
+    <span class="ornament" aria-hidden="true">❧</span>
+</article>
+@code {
+    [Parameter] public string BrideName { get; set; } = "";
+    [Parameter] public string GroomName { get; set; } = "";
+    [Parameter] public string Message { get; set; } = "";
+    [Parameter] public string Accent { get; set; } = "#52796f";
+}

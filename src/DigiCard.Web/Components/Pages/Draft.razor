@@ -1,0 +1,26 @@
+@page "/drafts/{Id:guid}"
+@using System.Security.Claims
+@using DigiCard.Web.Client.Components
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject DigiCard.Contracts.Invitations.IDraftReader Reader
+@inject AuthenticationStateProvider Authentication
+<PageTitle>پیش‌نویس | دیجی‌کارت</PageTitle>
+@if (draft is null) { <h1>پیش‌نویس پیدا نشد</h1> }
+else
+{
+    <h1>@draft.Title</h1><p role="status">پیش‌نویس ذخیره شد؛ فقط برای شما قابل مشاهده است.</p>
+    <CardPreview BrideName="@draft.BrideName" GroomName="@draft.GroomName" Message="@draft.Message" Accent="@draft.Accent" />
+    <a href="/studio">ساخت کارت دیگر</a>
+}
+@code {
+    [Parameter] public Guid Id { get; set; }
+    [CascadingParameter] private HttpContext? HttpContext { get; set; }
+    private DigiCard.Contracts.Invitations.DraftResponse? draft;
+    protected override async Task OnParametersSetAsync()
+    {
+        if (HttpContext is not null) HttpContext.Response.Headers.CacheControl = "no-store";
+        var user = (await Authentication.GetAuthenticationStateAsync()).User;
+        var owner = user.FindFirstValue(ClaimTypes.NameIdentifier);
+        draft = string.IsNullOrWhiteSpace(owner) ? null : await Reader.FindOwnedAsync(Id, owner, CancellationToken.None);
+    }
+}

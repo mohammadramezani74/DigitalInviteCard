@@ -1,0 +1,12 @@
+using DigiCard.Modules.Accounts;
+using DigiCard.Modules.Templates;
+using DigiCard.Modules.Invitations.Infrastructure;
+using Microsoft.EntityFrameworkCore;
+using DigiCard.DbMigrator;
+await using var accounts = new AccountsFactory().CreateDbContext(args);
+await using var templates = new TemplatesFactory().CreateDbContext(args);
+await using var invitations = new InvitationsFactory().CreateDbContext(args);
+await accounts.Database.MigrateAsync();
+await templates.Database.MigrateAsync();
+await invitations.Database.MigrateAsync();
+Console.WriteLine("DigiCard migrations applied successfully.");
