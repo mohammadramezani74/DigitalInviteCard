@@ -1,0 +1,109 @@
+@page "/my-cards"
+@using System.Security.Claims
+@using DigiCard.Contracts.Invitations
+@using DigiCard.Contracts.Templates
+@using DigiCard.Web.Client.Components
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@inject IDraftReader Reader
+@inject ITemplateCatalog Catalog
+@inject AuthenticationStateProvider Authentication
+
+@* Private page. Read server-side rather than through the API: this is a plain list and there is
+   no reason to make the browser fetch what the server already has in hand. *@
+<SeoHead Title="کارت‌های من | دیجی‌کارت" NoIndex="true" />
+
+<nav class="breadcrumb" aria-label="مسیر صفحه">
+    <ol>
+        <li><a href="/">خانه</a></li>
+        <li aria-current="page">کارت‌های من</li>
+    </ol>
+</nav>
+
+<header class="page-head">
+    <h1>کارت‌های من</h1>
+    <p>@(drafts.Count == 0 ? "هنوز کارتی ذخیره نکرده‌اید." : $"{drafts.Count} کارت ذخیره‌شده.")</p>
+</header>
+
+@if (drafts.Count == 0)
+{
+    <p class="empty-note" role="status">
+        یک قالب انتخاب کنید و کارت خودتان را بچینید.
+        <a href="/templates">دیدن قالب‌ها</a>.
+    </p>
+}
+else
+{
+    <ul class="template-grid">
+        @foreach (var draft in drafts)
+        {
+            <li>
+                <article class="mycard">
+                    <a class="mycard-preview" href="@($"/studio/{draft.Id}")" aria-label="@($"ویرایش {draft.Title}")">
+                        <CardPreview Template="TemplateFor(draft)"
+                                     ElementsOverride="@draft.Elements"
+                                     AccentOverride="@draft.Accent"
+                                     BrideName="@draft.BrideName"
+                                     GroomName="@draft.GroomName"
+                                     Message="@draft.Message"
+                                     Address="@draft.Address"
+                                     EventDate="draft.EventDate"
+                                     EventTime="draft.EventTime"
+                                     EventEndTime="draft.EventEndTime" />
+                    </a>
+
+                    <h3>@draft.Title</h3>
+                    <p class="template-meta">آخرین تغییر: @Persian(draft.UpdatedAt)</p>
+
+                    <div class="mycard-actions">
+                        <a class="btn-primary" href="@($"/studio/{draft.Id}")">ادامه ویرایش</a>
+                        <a class="btn-quiet" href="@($"/drafts/{draft.Id}")">نمایش</a>
+                    </div>
+
+                    @* Two steps, with no JavaScript: the confirmation is a <details>, not a
+                       browser dialog. Deleting a card someone spent an evening arranging should
+                       never be one stray tap, and this page deliberately ships no script. *@
+                    <details class="mycard-delete">
+                        <summary>حذف</summary>
+                        <form method="post" action="@($"/api/invitations/{draft.Id}/delete")">
+                            <AntiforgeryToken />
+                            <p>«@draft.Title» برای همیشه حذف می‌شود.</p>
+                            <button type="submit" class="btn-danger">بله، حذف شود</button>
+                        </form>
+                    </details>
+                </article>
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    [CascadingParameter] private HttpContext? HttpContext { get; set; }
+
+    private IReadOnlyList<DraftResponse> drafts = [];
+    private Dictionary<Guid, TemplateSummary> templates = [];
+
+    private TemplateSummary? TemplateFor(DraftResponse draft) =>
+        templates.TryGetValue(draft.TemplateId, out var template) ? template : null;
+
+    /// <summary>The date in the calendar the cards are written in.</summary>
+    private static string Persian(DateTimeOffset moment)
+    {
+        var parts = PersianDate.Split(DateOnly.FromDateTime(moment.ToLocalTime().DateTime));
+        return PersianDate.ToPersianDigits($"{parts.Day} {parts.MonthName} {parts.Year}");
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (HttpContext is not null) HttpContext.Response.Headers.CacheControl = "no-store";
+
+        var user = (await Authentication.GetAuthenticationStateAsync()).User;
+        var owner = user.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(owner)) return;
+
+        drafts = await Reader.ListOwnedAsync(owner, CancellationToken.None);
+
+        // One read for the designs, rather than one per card.
+        var all = await Catalog.ListAsync(CancellationToken.None);
+        templates = all.ToDictionary(t => t.Id);
+    }
+}

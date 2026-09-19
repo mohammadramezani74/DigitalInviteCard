@@ -2,6 +2,14 @@
 @layout DigiCard.Web.Components.Layout.MainLayout
 @inject NavigationManager NavigationManager
 
+@* The scaffolded account pages are written in Bootstrap's classes and nothing else on the site
+   is, so it is loaded here instead of in the page head. These pages carry a noindex and are
+   reached by a handful of people a day; the front page is reached by everyone. When these pages
+   are redesigned in the site's own styles, this line and the package go together. *@
+<HeadContent>
+    <link rel="stylesheet" href="@Assets["bootstrap/bootstrap.min.css"]" />
+</HeadContent>
+
 @if (HttpContext is null)
 {
     <p>Loading...</p>

@@ -1,15 +1,344 @@
-<article class="invitation-preview" style="--accent:@Accent" aria-label="پیش‌نمایش کارت دعوت">
-    <span class="ornament" aria-hidden="true">❧</span>
-    <p>آغاز یک زندگی، کنار هم</p>
-    <h2>@(string.IsNullOrWhiteSpace(BrideName) ? "نام عروس" : BrideName)
-        <span class="ampersand">و</span>
-        @(string.IsNullOrWhiteSpace(GroomName) ? "نام داماد" : GroomName)</h2>
-    <p class="invitation-message">@Message</p>
-    <span class="ornament" aria-hidden="true">❧</span>
+@using DigiCard.Contracts.Media
+@using DigiCard.Contracts.Templates
+@using Microsoft.Extensions.Logging
+@inject ILogger<CardPreview> Logger
+
+@* Layers, bottom to top: painted artwork, the user's photo for photo templates, then the text.
+
+   The text layer has two shapes. A template with a saved layout renders its element list, each
+   element absolutely positioned by percentage - that is what the editor edits and what lets a
+   poem sit wherever the designer put it. A template without one falls back to the fixed
+   kicker/names/message stack inside its measured safe band, so templates can be converted one at
+   a time without the gallery going blank in between.
+
+   User text is Razor-encoded and never reaches an attribute. The only things interpolated into
+   style and class are numbers CardLayout clamped and strings it matched against a closed set or
+   an exact pattern - which is what makes it safe for the editor to write layouts. *@
+<article class="card @LayoutClass @FrameClass @TypeClass @FamilyClass @ArtClass" style="@Style"
+         aria-label="پیش‌نمایش کارت دعوت">
+
+    @if (HasArtwork)
+    {
+        <img class="card-artwork"
+             src="@($"card-art/{Artwork}/card.webp")"
+             srcset="@($"card-art/{Artwork}/card-sm.webp 480w, card-art/{Artwork}/card.webp 1024w")"
+             sizes="(max-width: 700px) 90vw, 340px"
+             alt=""
+             loading="lazy"
+             decoding="async" />
+    }
+    else
+    {
+        <div class="card-art-layer" aria-hidden="true">
+            <CardArt Family="@Family" Layout="@Layout" />
+        </div>
+    }
+
+    @if (Layout == "photo" && layout.IsEmpty)
+    {
+        <div class="card-photo" aria-hidden="true">
+            <span class="card-photo-hint">عکس شما</span>
+        </div>
+    }
+
+    @if (layout.IsEmpty)
+    {
+        <div class="card-body">
+            <p class="card-kicker">@KickerText</p>
+
+            <h3 class="card-names">
+                <span class="card-name">@Primary</span>
+                @if (HasSecondName)
+                {
+                    <span class="card-amp">@JoinerText</span>
+                    <span class="card-name">@Secondary</span>
+                }
+            </h3>
+
+            <span class="card-rule" aria-hidden="true">@DividerSvg</span>
+
+            @if (!string.IsNullOrWhiteSpace(MessageText))
+            {
+                <p class="card-message">@MessageText</p>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="card-stage">
+            @foreach (var element in layout.Elements)
+            {
+                @* A one-name occasion has nothing to join, so those two boxes are simply not
+                   drawn rather than drawn empty. *@
+                if (!HasSecondName && element.Role is CardRole.Name2 or CardRole.Joiner) continue;
+
+                @* data-el costs a handful of bytes per element on the public page and is what
+                   lets the editor measure where a box actually landed - a text element has no
+                   height of its own in the model, so only the browser knows. *@
+                <div class="@Classes(element)" style="@Box(element)" data-el="@element.Id">
+                    @if (element.Role == CardRole.Names)
+                    {
+                        <span class="card-name">@Primary</span>
+                        @if (HasSecondName)
+                        {
+                            <span class="card-amp">@JoinerText</span>
+                            <span class="card-name">@Secondary</span>
+                        }
+                    }
+                    else if (element.Role == CardRole.Divider)
+                    {
+                        @DividerSvg
+                    }
+                    else if (element.Role == CardRole.Photo)
+                    {
+                        @if (element.Source is { Length: > 0 } photo)
+                        {
+                            @* Several stored widths, and sizes tells the browser how wide the
+                               picture really is on the page - without it a phone downloads the
+                               desktop version, which is most of what makes a gallery slow. The
+                               box already has a fixed height in CSS, so nothing shifts while it
+                               loads. *@
+                            <img class="card-photo-img"
+                                 src="@MediaSummary.Url(photo, 640)"
+                                 srcset="@MediaSummary.SrcSet(photo, MediaKind.Photo)"
+                                 sizes="(max-width: 700px) 60vw, 300px"
+                                 alt=""
+                                 loading="lazy"
+                                 decoding="async" />
+                        }
+                        else
+                        {
+                            <span class="card-photo-hint">عکس شما</span>
+                        }
+                    }
+                    else if (element.Role == CardRole.Date && EventDate is { } date && IsStructured(element))
+                    {
+                        @* circle and stacked need the pieces separately, not one line of text. *@
+                        var parts = PersianDate.Split(date);
+                        var fa = element.Style.Digits == "fa";
+
+                        <span class="d-day">@Digits(parts.Day.ToString(), fa)</span>
+                        <span class="d-month">@parts.MonthName</span>
+                        <span class="d-year">@Digits(parts.Year.ToString(), fa)</span>
+                    }
+                    else if (element.Role == CardRole.Address && element.Style.Variant == "pin")
+                    {
+                        <span class="d-pin" aria-hidden="true">@PinSvg</span>
+                        <span class="d-text">@TextFor(element)</span>
+                    }
+                    else
+                    {
+                        @TextFor(element)
+
+                        @if (element.Role == CardRole.Poem && !string.IsNullOrWhiteSpace(element.Caption))
+                        {
+                            <span class="card-poet">@element.Caption</span>
+                        }
+                    }
+                </div>
+            }
+        </div>
+    }
 </article>
+
 @code {
+    /// <summary>The design to render. When null a neutral default is used.</summary>
+    [Parameter] public TemplateSummary? Template { get; set; }
+
+    /// <summary>
+    /// The occasion this card is for. Supplies the field labels and the default wording, so a
+    /// memorial card asks for the right name instead of a bride's. Null keeps the wedding
+    /// wording, which is what the gallery still passes.
+    /// </summary>
+    [Parameter] public OccasionSummary? Occasion { get; set; }
+
     [Parameter] public string BrideName { get; set; } = "";
     [Parameter] public string GroomName { get; set; } = "";
     [Parameter] public string Message { get; set; } = "";
-    [Parameter] public string Accent { get; set; } = "#52796f";
+    [Parameter] public string? Kicker { get; set; }
+
+    /// <summary>Real values, not formatted strings - the element's variant decides how they read.</summary>
+    [Parameter] public DateOnly? EventDate { get; set; }
+    [Parameter] public TimeOnly? EventTime { get; set; }
+    [Parameter] public TimeOnly? EventEndTime { get; set; }
+
+    [Parameter] public string Address { get; set; } = "";
+
+    /// <summary>
+    /// The card's own saved arrangement, overriding the template's. A draft keeps its own copy so
+    /// that editing the template later does not rearrange a card someone already saved.
+    /// </summary>
+    [Parameter] public string? ElementsOverride { get; set; }
+
+    /// <summary>Overrides the template accent; used by drafts that snapshotted a colour.</summary>
+    [Parameter] public string? AccentOverride { get; set; }
+
+    private CardLayout layout = CardLayout.Empty;
+
+    protected override void OnParametersSet()
+    {
+        var json = Safe(ElementsOverride) ?? Safe(Template?.Elements);
+
+        if (!CardLayout.TryParse(json, out layout))
+        {
+            // One unreadable row degrades one card to the fallback stack. It must not throw: this
+            // renders on the home page, which has to survive a bad catalog.
+            Logger.LogWarning("Card layout for template {Slug} could not be parsed; using the fallback stack.",
+                Template?.Slug ?? "(none)");
+            layout = CardLayout.Empty;
+        }
+    }
+
+    // ------------------------------------------------------------------ occasion-driven wording
+    private string PrimaryLabel => Safe(Occasion?.PrimaryLabel) ?? "نام عروس";
+    private string SecondaryLabel => Safe(Occasion?.SecondaryLabel) ?? "نام داماد";
+    private bool HasSecondName => Occasion is null || Occasion.HasSecondName;
+    private string JoinerText => Safe(Occasion?.Joiner) ?? "و";
+
+    private string Primary => Safe(BrideName) ?? PrimaryLabel;
+    private string Secondary => Safe(GroomName) ?? SecondaryLabel;
+    private string KickerText => Safe(Kicker) ?? Safe(Occasion?.DefaultKicker) ?? "آغاز یک زندگی، کنار هم";
+    private string MessageText => Safe(Message) ?? Safe(Occasion?.DefaultMessage) ?? "";
+
+    // ------------------------------------------------------------------ element rendering
+    /// <summary>The two date variants that need their pieces laid out rather than written on a line.</summary>
+    private static bool IsStructured(CardElement element) =>
+        element.Style.Variant is "circle" or "stacked";
+
+    private static string Digits(string text, bool persian) =>
+        persian ? PersianDate.ToPersianDigits(text) : text;
+
+    /// <summary>
+    /// Bound roles read the card's data; free roles carry their own text. An empty bound field
+    /// shows its placeholder rather than collapsing, because an empty box in the editor is
+    /// something the user cannot grab.
+    /// </summary>
+    private string TextFor(CardElement element)
+    {
+        var fa = element.Style.Digits == "fa";
+
+        return element.Role switch
+        {
+            CardRole.Kicker => KickerText,
+            CardRole.Message => MessageText,
+            CardRole.Name1 => Primary,
+            CardRole.Name2 => Secondary,
+            CardRole.Joiner => JoinerText,
+            CardRole.Date => EventDate is { } d
+                ? PersianDate.Format(d, element.Style.Variant, fa)
+                : "تاریخ مراسم",
+            CardRole.Time => EventTime is { } t
+                ? EventEndTime is { } end
+                    ? $"{PersianDate.FormatTime(t, fa)} تا {PersianDate.FormatTime(end, fa)}"
+                    : PersianDate.FormatTime(t, fa)
+                : "ساعت",
+            CardRole.Address => Safe(Address) ?? "نشانی مراسم",
+            _ => Safe(element.Text) ?? "",
+        };
+    }
+
+    private static string Classes(CardElement element)
+    {
+        var s = element.Style;
+        var classes = $"card-el card-el-{element.Role} card-font-{s.Font} card-weight-{s.Weight} " +
+                      $"card-align-{s.Align} card-var-{s.Variant} card-frame-el-{s.Frame} card-fit-{s.Fit}";
+
+        // A palette token becomes a class so it tracks the template's colours; a literal colour is
+        // written into the style attribute instead, where it can be any of 16 million values.
+        return s.HasLiteralColor ? classes : $"{classes} card-tone-{s.Color}";
+    }
+
+    /// <summary>
+    /// The only place layout numbers become CSS. Every value was clamped or pattern-matched by
+    /// CardLayout.Normalize and is formatted invariantly, so a Persian thread culture cannot
+    /// produce a style attribute the browser throws away.
+    /// </summary>
+    private static string Box(CardElement e)
+    {
+        var s = e.Style;
+
+        var css = $"left:{CardLayout.Css(e.X)}%;top:{CardLayout.Css(e.Y)}%;width:{CardLayout.Css(e.W)}%;" +
+                  $"z-index:{e.Z};font-size:{CardLayout.Css(s.FontSize)}cqi;" +
+                  $"line-height:{CardLayout.Css(s.LineHeight)};";
+
+        // A round photo must stay round: with both width and height set, aspect-ratio is
+        // ignored, so the height is dropped here rather than fought with !important in CSS.
+        if (e.Role == CardRole.Photo && s.Variant == "circle")
+            css += "aspect-ratio:1;";
+        else if (e.H is not null)
+            css += $"height:{CardLayout.Css(e.H.Value)}%;";
+        if (e.Rotation != 0) css += $"transform:rotate({CardLayout.Css(e.Rotation)}deg);";
+        if (s.Opacity < 1) css += $"opacity:{CardLayout.Css(s.Opacity)};";
+
+        // Matched ^#[0-9a-fA-F]{6}$ on the way in, so there is nothing else it could be.
+        if (s.HasLiteralColor) css += $"color:{s.Color};";
+
+        // Where the crop keeps its focus. Only written when it has been moved off centre, so the
+        // public page's style attribute stays as short as it was for every card made until now.
+        if (e.Role == CardRole.Photo && (s.FocusX != 50 || s.FocusY != 50))
+            css += $"--card-focus:{CardLayout.Css(s.FocusX)}% {CardLayout.Css(s.FocusY)}%;";
+
+        // Written as a ratio because that is what scale() wants; clamped between 0.25 and 4 on
+        // the way in, so nothing here can produce a photo the size of the page.
+        if (e.Role == CardRole.Photo && s.Zoom != 100)
+            css += $"--card-zoom:{CardLayout.Css(s.Zoom / 100)};";
+
+        // The soft edge is a mask whose hard centre shrinks as the value rises.
+        if (s.Feather > 0) css += $"--card-feather:{CardLayout.Css(100 - s.Feather)}%;";
+
+        // Matched ^[a-z0-9-]{1,40}$, so it cannot close the url() or the declaration.
+        if (s.Frame == "art" && s.FrameArt is { } art)
+            css += $"--card-frame-art:url('card-art/frames/{art}.webp');";
+
+        return css;
+    }
+
+    /// <summary>Authored markup, no user input, so MarkupString is safe here.</summary>
+    private static readonly MarkupString DividerSvg = new(
+        """
+        <svg viewBox="0 0 120 10" role="presentation" focusable="false" aria-hidden="true">
+          <path d="M4 5h44" stroke="currentColor" stroke-width=".9" fill="none" stroke-linecap="round" />
+          <path d="M116 5H72" stroke="currentColor" stroke-width=".9" fill="none" stroke-linecap="round" />
+          <path d="M60 1l4 4-4 4-4-4z" fill="currentColor" />
+        </svg>
+        """);
+
+    private static readonly MarkupString PinSvg = new(
+        """
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+             stroke-linecap="round" stroke-linejoin="round" role="presentation" focusable="false" aria-hidden="true">
+          <path d="M12 21s-6.5-5.6-6.5-10.2A6.5 6.5 0 0 1 12 4.3a6.5 6.5 0 0 1 6.5 6.5C18.5 15.4 12 21 12 21z" />
+          <circle cx="12" cy="10.6" r="2.4" />
+        </svg>
+        """);
+
+    // ------------------------------------------------------------------ template tokens
+    private string Accent => Safe(AccentOverride) ?? Safe(Template?.Accent) ?? "#52796f";
+    private string Background => Safe(Template?.Background) ?? "#fbfaf7";
+    private string Ink => Safe(Template?.Ink) ?? "#33332e";
+    private string Frame => Safe(Template?.Frame) ?? "thin";
+    private string Typeface => Safe(Template?.Typeface) ?? "serif";
+    private string Layout => Safe(Template?.Layout) ?? "centered";
+    private string Family => Safe(Template?.Family) ?? "minimal";
+
+    private string? Artwork => Safe(Template?.Artwork);
+    private bool HasArtwork => Artwork is not null;
+
+    // Clamped, because these come from the database and drive layout maths.
+    private int SafeTop => Clamp(Template?.SafeTop ?? 30, 0, 90);
+    private int SafeBottom => Clamp(Template?.SafeBottom ?? 75, SafeTop + 10, 100);
+
+    private string LayoutClass => $"card-layout-{Layout}";
+    private string FrameClass => $"card-frame-{Frame}";
+    private string TypeClass => $"card-type-{Typeface}";
+    private string FamilyClass => $"card-family-{Family}";
+    private string ArtClass => HasArtwork ? "card-has-artwork" : "card-has-vector";
+
+    private string Style =>
+        $"--card-accent:{Accent};--card-ground:{Background};--card-ink:{Ink};" +
+        $"--card-safe-top:{SafeTop}%;--card-safe-bottom:{100 - SafeBottom}%;";
+
+    private static string? Safe(string? value) => string.IsNullOrWhiteSpace(value) ? null : value;
+
+    private static int Clamp(int value, int min, int max) => value < min ? min : value > max ? max : value;
 }

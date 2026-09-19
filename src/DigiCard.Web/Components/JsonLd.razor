@@ -1,0 +1,29 @@
+@* Structured data for the search engines. It says in a machine-readable form what the page
+   already says in Persian: this is a catalogue of invitation-card designs, this card belongs to
+   that occasion. Google uses it to build the richer result - the one with the breadcrumb trail
+   and the thumbnails - which is worth more clicks than any keyword.
+
+   The JSON is built from objects and serialized, never concatenated from strings: the serializer
+   escapes < and > to < and >, so a template name containing </script> is text, not the
+   end of the script block. Persian letters are left as they are rather than escaped to \u06xx,
+   which would triple the size of every title. *@
+@using System.Text.Encodings.Web
+@using System.Text.Json
+@using System.Text.Unicode
+
+<HeadContent>
+    <script type="application/ld+json">@((MarkupString)Json)</script>
+</HeadContent>
+
+@code {
+    [Parameter, EditorRequired] public object Data { get; set; } = default!;
+
+    private static readonly JsonSerializerOptions Options = new()
+    {
+        Encoder = JavaScriptEncoder.Create(UnicodeRanges.All),
+        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
+        WriteIndented = false,
+    };
+
+    private string Json => JsonSerializer.Serialize(Data, Options);
+}

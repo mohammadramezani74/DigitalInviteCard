@@ -2,16 +2,112 @@
 @using DigiCard.Contracts.Templates
 @using DigiCard.Web.Client.Components
 @inject ITemplateCatalog Catalog
-<PageTitle>قالب‌های دعوت | دیجی‌کارت</PageTitle>
-<h1>شروعی به سلیقه شما</h1>
-<div class="feature-grid">
-@foreach (var template in templates)
+@inject IOccasionCatalog Occasions
+@inject NavigationManager Navigation
+
+<SeoHead Title="قالب‌های کارت دعوت دیجیتال | دیجی‌کارت"
+         Description="گالری قالب‌های کارت دعوت فارسی در چهار خانواده طراحی: مینیمال، آبرنگی، کلاسیک ایرانی و عکس‌محور. برای عروسی، عقد، نامزدی، بله‌برون، حنابندان و سالگرد ازدواج." />
+
+<JsonLd Data="Structured" />
+
+<nav class="breadcrumb" aria-label="مسیر صفحه">
+    <ol>
+        <li><a href="/">خانه</a></li>
+        <li aria-current="page">قالب‌ها</li>
+    </ol>
+</nav>
+
+<header class="page-head">
+    <h1>قالب‌های کارت دعوت</h1>
+    <p>@templates.Count قالب در چهار خانواده طراحی.</p>
+</header>
+
+<nav class="chip-row" aria-label="دسته‌بندی مراسم">
+    <span class="chip chip-active">همه</span>
+    @foreach (var occasion in occasions)
+    {
+        <a class="chip" href="@($"/templates/category/{occasion.Slug}")">@occasion.Title</a>
+    }
+</nav>
+
+@if (templates.Count == 0)
 {
-    <section><CardPreview BrideName="سارا" GroomName="علی" Message="با حضور شما شادی ما کامل می‌شود" Accent="@template.Accent" />
-    <h2>@template.Name</h2><a href="@($"/studio?TemplateId={template.Id}")">شخصی‌سازی کارت</a></section>
+    <p class="empty-note" role="status">قالبی یافت نشد. اگر دیتابیس تازه ساخته شده، ابتدا DbMigrator را اجرا کنید.</p>
 }
-</div>
+else
+{
+    @foreach (var family in templates.GroupBy(t => t.Family))
+    {
+        <section class="section" aria-labelledby="@($"family-{family.Key}")">
+            <header class="section-head">
+                <h2 id="@($"family-{family.Key}")">@TemplateDisplay.FamilyTitle(family.Key)</h2>
+                <p>@TemplateDisplay.FamilyNote(family.Key)</p>
+            </header>
+
+            <ul class="template-grid">
+                @foreach (var template in family)
+                {
+                    <li>
+                        <a class="template-tile" href="@($"/templates/{template.Slug}")">
+                            <CardInEnvelope Template="template"
+                                         BrideName="عروس"
+                                         GroomName="داماد"
+                                         Message="با حضور شما شادی ما کامل می‌شود" />
+                            <h3>@template.Name</h3>
+                            <p class="template-meta">@OccasionTitle(template.Category) · نسخه @template.Version</p>
+                        </a>
+                    </li>
+                }
+            </ul>
+        </section>
+    }
+}
+
 @code {
     private IReadOnlyList<TemplateSummary> templates = [];
-    protected override async Task OnInitializedAsync() => templates = await Catalog.ListAsync(CancellationToken.None);
+    private IReadOnlyList<OccasionSummary> occasions = [];
+
+    private string OccasionTitle(string slug) =>
+        occasions.FirstOrDefault(o => o.Slug == slug)?.Title ?? slug;
+
+    protected override async Task OnInitializedAsync()
+    {
+        occasions = await Occasions.ListAsync(CancellationToken.None);
+        templates = await Catalog.ListAsync(CancellationToken.None);
+    }
+
+    /// <summary>
+    /// The gallery, described for a crawler: a collection page holding an ordered list of the
+    /// designs, each pointing at its own page. The host comes from the request rather than from
+    /// configuration, so these are correct on any domain the site is served from - including
+    /// localhost, where a hard-coded production URL would be a lie.
+    /// </summary>
+    private object Structured
+    {
+        get
+        {
+            var origin = Navigation.BaseUri.TrimEnd('/');
+
+            return new Dictionary<string, object?>
+            {
+                ["@context"] = "https://schema.org",
+                ["@type"] = "CollectionPage",
+                ["name"] = "قالب‌های کارت دعوت دیجیتال",
+                ["inLanguage"] = "fa-IR",
+                ["url"] = $"{origin}/templates",
+                ["mainEntity"] = new Dictionary<string, object?>
+                {
+                    ["@type"] = "ItemList",
+                    ["numberOfItems"] = templates.Count,
+                    ["itemListElement"] = templates.Select((t, i) => new Dictionary<string, object?>
+                    {
+                        ["@type"] = "ListItem",
+                        ["position"] = i + 1,
+                        ["name"] = t.Name,
+                        ["url"] = $"{origin}/templates/{t.Slug}",
+                    }).ToArray(),
+                },
+            };
+        }
+    }
 }

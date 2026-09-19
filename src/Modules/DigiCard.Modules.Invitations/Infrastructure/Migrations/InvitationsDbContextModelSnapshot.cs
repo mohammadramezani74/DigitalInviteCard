@@ -34,6 +34,13 @@ namespace DigiCard.Modules.Invitations.Infrastructure.Migrations
                         .HasMaxLength(7)
                         .HasColumnType("nvarchar(7)");
 
+                    b.Property<string>("Address")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)")
+                        .HasDefaultValue("");
+
                     b.Property<string>("BrideName")
                         .IsRequired()
                         .HasMaxLength(80)
@@ -41,6 +48,21 @@ namespace DigiCard.Modules.Invitations.Infrastructure.Migrations
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("Elements")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(max)")
+                        .HasDefaultValue("");
+
+                    b.Property<DateOnly?>("EventDate")
+                        .HasColumnType("date");
+
+                    b.Property<TimeOnly?>("EventEndTime")
+                        .HasColumnType("time(0)");
+
+                    b.Property<TimeOnly?>("EventTime")
+                        .HasColumnType("time(0)");
 
                     b.Property<string>("GroomName")
                         .IsRequired()
@@ -74,11 +96,49 @@ namespace DigiCard.Modules.Invitations.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OwnerId", "UpdatedAt");
+
+                    b.ToTable("Drafts", "invitations");
+                });
+
+            modelBuilder.Entity("DigiCard.Modules.Invitations.Domain.MediaAsset", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<long>("Bytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<int>("Height")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("OwnerId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("Width")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
 
                     b.HasIndex("OwnerId", "CreatedAt");
 
-                    b.ToTable("Drafts", "invitations");
+                    b.ToTable("Media", "invitations");
                 });
 #pragma warning restore 612, 618
         }

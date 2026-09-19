@@ -1,6 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="SkiaSharp" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux" />
     <ProjectReference Include="../../DigiCard.Contracts/DigiCard.Contracts.csproj" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
   </ItemGroup>

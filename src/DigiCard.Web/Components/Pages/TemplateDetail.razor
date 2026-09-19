@@ -1,0 +1,152 @@
+@page "/templates/{Slug}"
+@using DigiCard.Contracts.Templates
+@using DigiCard.Web.Client.Components
+@inject ITemplateCatalog Catalog
+@inject IOccasionCatalog Occasions
+@inject NavigationManager Navigation
+
+@if (template is null)
+{
+    <SeoHead Title="قالب پیدا نشد | دیجی‌کارت" NoIndex="true" />
+
+    <header class="page-head">
+        <h1>این قالب وجود ندارد</h1>
+        <p>ممکن است نشانی تغییر کرده باشد.</p>
+    </header>
+    <p><a class="btn-primary" href="/templates">دیدن همه قالب‌ها</a></p>
+}
+else
+{
+    <SeoHead Title="@($"قالب {template.Name} | کارت {OccasionTitle} | دیجی‌کارت")"
+             Description="@($"قالب {template.Name} از خانواده {TemplateDisplay.FamilyTitle(template.Family)} برای کارت {OccasionTitle}. متن فارسی را بنویسید و پیش‌نمایش کارت را همان لحظه ببینید.")" />
+
+    <JsonLd Data="Structured(template)" />
+
+    <nav class="breadcrumb" aria-label="مسیر صفحه">
+        <ol>
+            <li><a href="/">خانه</a></li>
+            <li><a href="/templates">قالب‌ها</a></li>
+            <li><a href="@($"/templates/category/{template.Category}")">@OccasionTitle</a></li>
+            <li aria-current="page">@template.Name</li>
+        </ol>
+    </nav>
+
+    <div class="detail-grid">
+        <div class="detail-preview">
+            <EnvelopeCard Template="template"
+                          BrideName="عروس"
+                          GroomName="داماد"
+                          Message="با حضور شما شادی ما کامل می‌شود" />
+        </div>
+
+        <div class="detail-info">
+            <h1>@template.Name</h1>
+            <p class="detail-lead">@TemplateDisplay.FamilyNote(template.Family)</p>
+
+            <dl class="detail-specs">
+                <div>
+                    <dt>مناسب برای</dt>
+                    <dd><a href="@($"/templates/category/{template.Category}")">@OccasionTitle</a></dd>
+                </div>
+                <div>
+                    <dt>خانواده طراحی</dt>
+                    <dd>@TemplateDisplay.FamilyTitle(template.Family)</dd>
+                </div>
+                <div>
+                    <dt>چیدمان</dt>
+                    <dd>@TemplateDisplay.LayoutTitle(template.Layout)</dd>
+                </div>
+                <div>
+                    <dt>نسخه قالب</dt>
+                    <dd>@template.Version</dd>
+                </div>
+            </dl>
+
+            <a class="btn-primary" href="@($"/studio?TemplateId={template.Id}")">شروع ساخت با این قالب</a>
+            <p class="detail-note">برای ذخیره کارت باید وارد حساب خود شوید.</p>
+        </div>
+    </div>
+
+    @if (related.Count > 0)
+    {
+        <section class="section" aria-labelledby="related-heading">
+            <header class="section-head">
+                <h2 id="related-heading">قالب‌های مشابه</h2>
+            </header>
+
+            <ul class="template-grid">
+                @foreach (var item in related)
+                {
+                    <li>
+                        <a class="template-tile" href="@($"/templates/{item.Slug}")">
+                            <CardInEnvelope Template="item"
+                                         BrideName="عروس"
+                                         GroomName="داماد"
+                                         Message="با حضور شما شادی ما کامل می‌شود" />
+                            <h3>@item.Name</h3>
+                            <p class="template-meta">@OccasionTitleFor(item.Category)</p>
+                        </a>
+                    </li>
+                }
+            </ul>
+        </section>
+    }
+}
+
+@code {
+    /// <summary>
+    /// The same trail the page already shows, in the form Google reads. A result that carries
+    /// خانه › قالب‌ها › عروسی › نام قالب takes more of the screen and tells someone what they are
+    /// clicking before they click it.
+    /// </summary>
+    private object Structured(TemplateSummary t)
+    {
+        var origin = Navigation.BaseUri.TrimEnd('/');
+
+        object Crumb(int position, string name, string path) => new Dictionary<string, object?>
+        {
+            ["@type"] = "ListItem",
+            ["position"] = position,
+            ["name"] = name,
+            ["item"] = $"{origin}{path}",
+        };
+
+        return new Dictionary<string, object?>
+        {
+            ["@context"] = "https://schema.org",
+            ["@type"] = "BreadcrumbList",
+            ["itemListElement"] = new[]
+            {
+                Crumb(1, "خانه", "/"),
+                Crumb(2, "قالب‌ها", "/templates"),
+                Crumb(3, OccasionTitle, $"/templates/category/{t.Category}"),
+                Crumb(4, t.Name, $"/templates/{t.Slug}"),
+            },
+        };
+    }
+
+    [Parameter] public string Slug { get; set; } = "";
+
+    private TemplateSummary? template;
+    private IReadOnlyList<TemplateSummary> related = [];
+    private IReadOnlyList<OccasionSummary> occasions = [];
+
+    private string OccasionTitle => OccasionTitleFor(template?.Category ?? "");
+
+    private string OccasionTitleFor(string slug) =>
+        occasions.FirstOrDefault(o => o.Slug == slug)?.Title ?? slug;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        occasions = await Occasions.ListAsync(CancellationToken.None);
+        template = await Catalog.FindBySlugAsync(Slug, CancellationToken.None);
+        if (template is null)
+        {
+            related = [];
+            return;
+        }
+
+        var sameCategory = await Catalog.ListByCategoryAsync(template.Category, CancellationToken.None);
+        related = sameCategory.Where(t => t.Id != template.Id).Take(3).ToList();
+    }
+}

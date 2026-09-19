@@ -19,8 +19,13 @@ public sealed class AppFactory : WebApplicationFactory<Program>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");
+        // The HTTP-only tests must never reach a real server. The previous placeholder used
+        // Server=localhost with the sa account and a wrong password, so every run fired a burst
+        // of failed sa logins at the developer's own SQL Server - enough to trip the password
+        // policy and lock the account out. Port 1 refuses immediately instead: nothing listens
+        // there, no login is ever attempted, and the tests finish in seconds rather than a minute.
         builder.UseSetting("ConnectionStrings:DefaultConnection", Environment.GetEnvironmentVariable("DIGICARD_TEST_SQL")
-            ?? "Server=localhost;Database=DigiCardTests;User Id=sa;Password=UnusedForHttpOnlyTests;TrustServerCertificate=True");
+            ?? "Server=127.0.0.1,1;Database=DigiCardTests;User Id=digicard_tests_placeholder;Password=unused;TrustServerCertificate=True;Connect Timeout=1");
         builder.ConfigureServices(services => services.AddAuthentication(o =>
         { o.DefaultAuthenticateScheme = "Test"; o.DefaultChallengeScheme = "Test"; })
             .AddScheme<AuthenticationSchemeOptions, TestAuthentication>("Test", _ => { }));

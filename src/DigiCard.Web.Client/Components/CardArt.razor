@@ -1,0 +1,211 @@
+@* Original decorative artwork for the card families. Everything is vector and drawn here:
+   no external image files, nothing traced from another product's designs.
+
+   The watercolour look comes from stacking soft, irregular blobs at low opacity behind
+   crisp stems - a blur filter on the blob group only, so the linework stays sharp.
+   Colours are derived from the card's accent through currentColor and opacity, which is why
+   the same drawing reads correctly on every template in the family. *@
+
+<svg class="card-art" viewBox="0 0 300 420" preserveAspectRatio="none"
+     role="presentation" focusable="false" aria-hidden="true">
+    <defs>
+        <filter id="@BleedId" x="-30%" y="-30%" width="160%" height="160%">
+            <feGaussianBlur stdDeviation="7" />
+        </filter>
+        <filter id="@SoftId" x="-30%" y="-30%" width="160%" height="160%">
+            <feGaussianBlur stdDeviation="2.2" />
+        </filter>
+    </defs>
+
+    @switch (Family)
+    {
+        case "watercolor":
+            @Watercolor
+            break;
+
+        case "persian":
+            @Persian
+            break;
+
+        case "photo":
+            @Photo
+            break;
+
+        default:
+            @Minimal
+            break;
+    }
+</svg>
+
+@code {
+    [Parameter] public string Family { get; set; } = "minimal";
+    [Parameter] public string Layout { get; set; } = "centered";
+
+    // Filter ids must be unique per instance: a gallery renders a dozen of these on one page,
+    // and duplicate ids would make every card use the first card's filters.
+    private readonly string instance = Guid.NewGuid().ToString("N")[..8];
+    private string BleedId => $"bleed-{instance}";
+    private string SoftId => $"soft-{instance}";
+
+    // ------------------------------------------------------------------ watercolour florals
+    private MarkupString Watercolor => new($"""
+        <g filter="url(#{BleedId})" opacity=".55">
+          <path d="M42 -10c26 6 44 26 48 52 4 24-6 46-24 56-20 11-44 6-58-12C-8 66-8 36 8 16 18 3 29 -13 42 -10Z" fill="currentColor" opacity=".38"/>
+          <path d="M78 24c16 10 22 30 16 48-7 20-26 32-45 28-16-3-28-18-28-36 0-20 15-38 33-42 9-2 17-3 24 2Z" fill="currentColor" opacity=".26"/>
+          <path d="M262 372c-24-4-42-22-46-46-4-22 6-42 24-51 19-10 42-4 55 12 14 18 13 45-2 61-10 11-20 27-31 24Z" fill="currentColor" opacity=".34"/>
+          <path d="M226 352c-14-10-19-29-12-45 8-18 27-28 43-23 15 4 25 19 24 36-1 19-15 35-32 38-8 1-16 0-23-6Z" fill="currentColor" opacity=".22"/>
+          <path d="M286 120c10 14 8 34-4 46-13 13-33 13-45 0-11-12-11-32 1-45 13-13 36-14 48-1Z" fill="currentColor" opacity=".18"/>
+        </g>
+
+        <g fill="none" stroke="currentColor" stroke-linecap="round" opacity=".75">
+          <path d="M6 96C26 78 44 54 52 26" stroke-width="1.3"/>
+          <path d="M52 26c-10 10-14 24-12 36" stroke-width="1"/>
+          <path d="M30 62c-12-2-22-10-26-22" stroke-width="1"/>
+          <path d="M62 78c10-6 16-18 16-32" stroke-width="1"/>
+          <path d="M294 330c-22 16-42 38-52 66" stroke-width="1.3"/>
+          <path d="M242 396c8-12 10-26 6-38" stroke-width="1"/>
+          <path d="M266 356c12 4 24 2 34-6" stroke-width="1"/>
+        </g>
+
+        <g fill="currentColor" opacity=".8">
+          {Petal(52, 26, 1.05, -18)}
+          {Petal(26, 60, .78, 26)}
+          {Petal(74, 62, .7, 62)}
+          {Petal(244, 392, 1.0, 160)}
+          {Petal(276, 352, .8, 210)}
+          {Petal(288, 116, .62, 120)}
+        </g>
+
+        <g fill="none" stroke="currentColor" stroke-width=".9" opacity=".5">
+          {Leaf(18, 118, .9, 24)} {Leaf(92, 40, .7, -40)}
+          {Leaf(282, 300, .9, 200)} {Leaf(210, 372, .7, 150)}
+        </g>
+        """);
+
+    // ------------------------------------------------------------------ persian classic
+    private MarkupString Persian => new($"""
+        <g fill="none" stroke="currentColor">
+          <path d="M34 404V150c0-48 26-86 66-104 6-3 14-6 20-8 6 2 14 5 20 8 40 18 66 56 66 104v254"
+                stroke-width="1.6" opacity=".85"/>
+          <path d="M44 404V152c0-43 23-77 59-93 4-2 9-4 13-5 4 1 9 3 13 5 36 16 59 50 59 93v252"
+                stroke-width=".8" opacity=".45"/>
+          <path d="M116 40c0-12 6-22 18-30 12 8 18 18 18 30" stroke-width="1.4" opacity=".8"/>
+        </g>
+
+        <g fill="currentColor" opacity=".9">
+          {Boteh(46, 356, .52, 0)}
+          {Boteh(254, 356, .52, 0, true)}
+        </g>
+
+        <g fill="none" stroke="currentColor" stroke-width="1" opacity=".55">
+          {TileBand(150, 92)}
+        </g>
+
+        <g fill="none" stroke="currentColor" stroke-width=".9" opacity=".5">
+          {Star8(150, 300, 15)}
+          {Star8(150, 300, 25)}
+        </g>
+
+        <g fill="currentColor" opacity=".55">
+          <circle cx="150" cy="342" r="2.4"/>
+          <circle cx="134" cy="342" r="1.4"/>
+          <circle cx="166" cy="342" r="1.4"/>
+        </g>
+        """);
+
+    // ------------------------------------------------------------------ photo-led
+    private MarkupString Photo => new($"""
+        <g fill="none" stroke="currentColor" opacity=".6">
+          <rect x="26" y="26" width="248" height="368" rx="3" stroke-width="1"/>
+          <rect x="33" y="33" width="234" height="354" rx="2" stroke-width=".6" opacity=".6"/>
+        </g>
+        <g fill="currentColor" opacity=".5">
+          {Corner(26, 26, 1)} {Corner(274, 26, -1)}
+          {Corner(26, 394, 1, true)} {Corner(274, 394, -1, true)}
+        </g>
+        <g filter="url(#{SoftId})" opacity=".35" fill="currentColor">
+          <path d="M150 248c22 0 40 4 40 9s-18 9-40 9-40-4-40-9 18-9 40-9Z" opacity=".5"/>
+        </g>
+        """);
+
+    // ------------------------------------------------------------------ minimal
+    private MarkupString Minimal => new($"""
+        <g fill="none" stroke="currentColor" opacity=".5">
+          <path d="M150 46v26" stroke-width="1"/>
+          <path d="M150 348v26" stroke-width="1"/>
+          <path d="M137 59h26M137 361h26" stroke-width=".7" opacity=".7"/>
+        </g>
+        <g fill="none" stroke="currentColor" stroke-width=".9" opacity=".55">
+          <path d="M150 30l9 12-9 12-9-12z"/>
+          <path d="M150 366l9 12-9 12-9-12z"/>
+        </g>
+        <g filter="url(#{SoftId})" opacity=".16" fill="currentColor">
+          <ellipse cx="150" cy="210" rx="120" ry="150"/>
+        </g>
+        """);
+
+    // ------------------------------------------------------------------ drawing helpers
+
+    /// <summary>A five-lobed blossom, drawn once and reused at different sizes and angles.</summary>
+    private static string Petal(double x, double y, double scale, double rotation)
+    {
+        var petals = new System.Text.StringBuilder();
+        for (var i = 0; i < 5; i++)
+        {
+            var angle = i * 72;
+            petals.Append($"""<path d="M0 0C5 -4 9 -11 8 -18 7 -24 3 -27 0 -27s-7 3-8 9c-1 7 3 14 8 18Z" transform="rotate({angle})" opacity=".85"/>""");
+        }
+
+        return $"""<g transform="translate({F(x)} {F(y)}) rotate({F(rotation)}) scale({F(scale)})">{petals}<circle r="3.4" opacity=".55"/></g>""";
+    }
+
+    /// <summary>A single pointed leaf with a centre vein.</summary>
+    private static string Leaf(double x, double y, double scale, double rotation) =>
+        $"""<g transform="translate({F(x)} {F(y)}) rotate({F(rotation)}) scale({F(scale)})">""" +
+        """<path d="M0 0C10 -4 20 -14 22 -28 10 -26 2 -16 0 0Z"/><path d="M0 0C7 -8 14 -16 22 -28" opacity=".7"/></g>""";
+
+    /// <summary>Boteh - the Persian teardrop with a curled tip, with an inner echo and florets.</summary>
+    private static string Boteh(double x, double y, double scale, double rotation, bool mirror = false)
+    {
+        var flip = mirror ? -1 : 1;
+        return $"""<g transform="translate({F(x)} {F(y)}) rotate({F(rotation)}) scale({F(scale * flip)} {F(scale)})">""" +
+               """
+               <path d="M0 60C-26 42-34 12-24-14-14-40 10-58 30-62c16-3 30 6 30 22 0 15-13 26-26 22-8-3-11-12-6-18"
+                     fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+               <path d="M0 46C-18 32-24 10-16-10-8-30 10-44 26-47c11-2 20 4 20 14 0 10-9 17-17 14"
+                     fill="none" stroke="currentColor" stroke-width="2" opacity=".6"/>
+               <circle cx="-2" cy="16" r="3.4" opacity=".8"/>
+               <circle cx="6" cy="-2" r="2.6" opacity=".65"/>
+               <circle cx="16" cy="-18" r="2" opacity=".5"/>
+               </g>
+               """;
+    }
+
+    /// <summary>An eight-point star: two squares, one rotated. The base motif of Persian tilework.</summary>
+    private static string Star8(double x, double y, double radius) =>
+        $"""<g transform="translate({F(x)} {F(y)})"><rect x="{F(-radius)}" y="{F(-radius)}" width="{F(radius * 2)}" height="{F(radius * 2)}"/>""" +
+        $"""<rect x="{F(-radius)}" y="{F(-radius)}" width="{F(radius * 2)}" height="{F(radius * 2)}" transform="rotate(45)"/></g>""";
+
+    /// <summary>A horizontal band of interlocking arcs, centred on x.</summary>
+    private static string TileBand(double x, double y)
+    {
+        var band = new System.Text.StringBuilder();
+        for (var i = -3; i <= 3; i++)
+        {
+            var cx = x + i * 16;
+            band.Append($"""<path d="M{F(cx - 8)} {F(y)}a8 8 0 0 1 16 0" />""");
+            band.Append($"""<path d="M{F(cx - 8)} {F(y)}a8 8 0 0 0 16 0" opacity=".45"/>""");
+        }
+
+        return band.ToString();
+    }
+
+    /// <summary>A small corner bracket for the photo frame.</summary>
+    private static string Corner(double x, double y, int xDirection, bool bottom = false)
+    {
+        var yDirection = bottom ? -1 : 1;
+        return $"""<path d="M{F(x)} {F(y + 16 * yDirection)}V{F(y)}h{F(16 * xDirection)}" fill="none" stroke="currentColor" stroke-width="1.6"/>""";
+    }
+
+    private static string F(double value) => value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+}

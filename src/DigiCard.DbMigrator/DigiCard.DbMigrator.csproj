@@ -1,6 +1,23 @@
-<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType></PropertyGroup><ItemGroup>
-<ProjectReference Include="../Modules/DigiCard.Modules.Accounts/DigiCard.Modules.Accounts.csproj" />
-<ProjectReference Include="../Modules/DigiCard.Modules.Templates/DigiCard.Modules.Templates.csproj" />
-<ProjectReference Include="../Modules/DigiCard.Modules.Invitations/DigiCard.Modules.Invitations.csproj" />
-<PackageReference Include="Microsoft.EntityFrameworkCore.Design"><PrivateAssets>all</PrivateAssets></PackageReference>
-</ItemGroup></Project>
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Modules/DigiCard.Modules.Accounts/DigiCard.Modules.Accounts.csproj" />
+    <ProjectReference Include="../Modules/DigiCard.Modules.Templates/DigiCard.Modules.Templates.csproj" />
+    <ProjectReference Include="../Modules/DigiCard.Modules.Invitations/DigiCard.Modules.Invitations.csproj" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- One connection string for the whole solution. The web app's appsettings.json is the
+         single source; it is copied next to the migrator so both always target the same
+         database. Do not add a second appsettings.json to this project. -->
+    <None Include="../DigiCard.Web/appsettings.json" Link="appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+</Project>

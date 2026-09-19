@@ -5,16 +5,33 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <base href="/" />
-    <link rel="stylesheet" href="bootstrap/bootstrap.min.css" />
-    <link rel="stylesheet" href="app.css" />
-    <link rel="stylesheet" href="DigiCard.Web.styles.css" />
+    @* The page's own text is the largest thing on screen, and it cannot be painted until this
+       font arrives. Asking for it here rather than waiting for the stylesheet to be parsed and
+       reach the @@font-face rule saves a whole round trip on a slow connection - which on an
+       Iranian mobile network is not a rounding error. The path is the plain one on purpose: it
+       has to match what the stylesheet asks for, or the browser fetches the font twice. *@
+    <link rel="preload" as="font" type="font/woff2" href="fonts/Vazirmatn-Regular.woff2" crossorigin />
+
+    @* Assets[...] resolves to the fingerprinted name that MapStaticAssets publishes, which comes
+       with a year-long immutable cache and a pre-compressed brotli copy. The name changes when
+       the file does, so nobody is ever served a stale stylesheet - which has already cost us one
+       debugging session.
+
+       Bootstrap is deliberately not here. It is used by the scaffolded account pages and by
+       nothing else on the site, so it now loads only inside AccountLayout: 163 KB of
+       render-blocking CSS that every visitor to the front page used to download for nothing. *@
+    <link rel="stylesheet" href="@Assets["app.css"]" />
+    @* Loaded last so the design system wins over the starter styles it replaces. *@
+    <link rel="stylesheet" href="@Assets["digicard.css"]" />
+    <link rel="stylesheet" href="@Assets["DigiCard.Web.styles.css"]" />
     <link rel="icon" type="image/png" href="favicon.png" />
+    <meta name="theme-color" content="#365b4c" />
     <HeadOutlet />
 </head>
 
 <body>
     <Routes />
-    <script src="_framework/blazor.web.js"></script>
+    <script src="@Assets["_framework/blazor.web.js"]"></script>
 </body>
 
 </html>

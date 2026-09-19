@@ -1,0 +1,343 @@
+@using DigiCard.Contracts.Templates
+@using DigiCard.Web.Client.Editor
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.JSInterop
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+@* The canvas is the card itself plus a transparent layer of grabbable boxes on top.
+
+   The card is rendered by CardPreview - the same component the public pages and the envelope use.
+   That is deliberate and worth defending: if the editor drew its own version of a card, the thing
+   you arrange here and the thing your guests open would drift apart within a month.
+
+   The overlay is positioned from measured boxes rather than from the model, because a text element
+   has no height in the model. See digicard-editor.js. *@
+<div class="ed-canvas @(dragging is not null ? "is-dragging" : "")"
+     @onpointerdown="@(() => State.Select(null))"
+     @onpointermove="OnPointerMove"
+     @onpointerup="OnPointerUp"
+     @onpointercancel="OnPointerUp">
+
+    @* Keys are taken over only while something is selected, so arrow nudges do not scroll the
+       page. Tab is not swallowed - it moves the selection to the next element, and Escape lets
+       go of the canvas entirely, so the keyboard is never trapped here. *@
+    <div class="ed-card" @ref="cardHost" tabindex="0"
+         @onkeydown="OnKeyDown" @onkeydown:preventDefault="State.Selected is not null">
+
+        <CardPreview Template="Template"
+                     Occasion="Occasion"
+                     ElementsOverride="@State.Json"
+                     BrideName="@BrideName"
+                     GroomName="@GroomName"
+                     Message="@Message"
+                     EventDate="EventDate"
+                     EventTime="EventTime"
+                     EventEndTime="EventEndTime"
+                     Address="@Address" />
+
+        @* The safe band, drawn only while editing: outside it, text sits on the painting. *@
+        <div class="ed-safe" style="@SafeBandStyle" aria-hidden="true"></div>
+
+        <div class="ed-overlay">
+            @foreach (var element in State.Layout.Elements)
+            {
+                var box = BoxFor(element);
+                var isSelected = element.Id == State.SelectedId;
+
+                <div class="ed-hit @(isSelected ? "is-selected" : "") @(IsOutsideSafeBand(element) ? "is-warned" : "")"
+                     style="@Frame(box)"
+                     role="button"
+                     tabindex="-1"
+                     aria-label="@Label(element)"
+                     @onpointerdown="@(e => StartMove(e, element.Id))"
+                     @onpointerdown:stopPropagation="true"
+                     @ondblclick="@(() => OnEditText.InvokeAsync(element.Id))">
+                </div>
+            }
+
+            @if (SelectedBox is { } selected)
+            {
+                <div class="ed-frame" style="@Frame(selected)" aria-hidden="true">
+                    <span class="ed-handle ed-h-e" @onpointerdown="@(e => StartResize(e, +1))" @onpointerdown:stopPropagation="true"></span>
+                    <span class="ed-handle ed-h-w" @onpointerdown="@(e => StartResize(e, -1))" @onpointerdown:stopPropagation="true"></span>
+                    <span class="ed-handle ed-h-rotate" @onpointerdown="StartRotate" @onpointerdown:stopPropagation="true"></span>
+                </div>
+            }
+        </div>
+    </div>
+
+    @if (WarnedCount > 0)
+    {
+        <p class="ed-warning" role="status">
+            @WarnedCount مورد بیرون از ناحیه امن است و ممکن است روی طرح بیفتد.
+        </p>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public EditorState State { get; set; } = default!;
+    [Parameter] public TemplateSummary? Template { get; set; }
+    [Parameter] public OccasionSummary? Occasion { get; set; }
+
+    [Parameter] public string BrideName { get; set; } = "";
+    [Parameter] public string GroomName { get; set; } = "";
+    [Parameter] public string Message { get; set; } = "";
+    [Parameter] public string Address { get; set; } = "";
+    [Parameter] public DateOnly? EventDate { get; set; }
+    [Parameter] public TimeOnly? EventTime { get; set; }
+    [Parameter] public TimeOnly? EventEndTime { get; set; }
+
+    /// <summary>Raised on a double-click, so the page can open its text field for that element.</summary>
+    [Parameter] public EventCallback<string> OnEditText { get; set; }
+
+    private ElementReference cardHost;
+    private IJSObjectReference? module;
+
+    /// <summary>Where each element actually landed, keyed by id. Refreshed after every render.</summary>
+    private Dictionary<string, Box> measured = [];
+
+    private Drag? dragging;
+    private bool needsMeasure = true;
+
+    private sealed record Box(double X, double Y, double W, double H);
+
+    private sealed record Drag(
+        string Kind, string Id, double StartX, double StartY,
+        CardElement Original, Box Card, Box Element, int Direction);
+
+    protected override void OnInitialized() => State.Changed += OnStateChanged;
+
+    private void OnStateChanged()
+    {
+        needsMeasure = true;
+        StateHasChanged();
+    }
+
+    protected override void OnParametersSet() => needsMeasure = true;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            module = await JS.InvokeAsync<IJSObjectReference>("import", "./digicard-editor.js");
+
+        if (module is null || !needsMeasure) return;
+        needsMeasure = false;
+
+        var boxes = await module.InvokeAsync<MeasuredBox[]>("measure", cardHost);
+        var next = boxes.ToDictionary(b => b.Id, b => new Box(b.X, b.Y, b.W, b.H));
+
+        // Re-rendering only when a number actually moved keeps this from looping: a measure that
+        // agrees with the last one produces no further render, so the pass settles after one go.
+        if (SameAsMeasured(next)) return;
+
+        measured = next;
+        StateHasChanged();
+    }
+
+    private bool SameAsMeasured(Dictionary<string, Box> next)
+    {
+        if (next.Count != measured.Count) return false;
+
+        foreach (var (id, box) in next)
+        {
+            if (!measured.TryGetValue(id, out var old)) return false;
+            if (Math.Abs(old.X - box.X) > 0.05 || Math.Abs(old.Y - box.Y) > 0.05 ||
+                Math.Abs(old.W - box.W) > 0.05 || Math.Abs(old.H - box.H) > 0.05) return false;
+        }
+
+        return true;
+    }
+
+    // Public so the JSON interop serializer can construct them by reflection.
+    public sealed record MeasuredBox(string Id, double X, double Y, double W, double H);
+
+    // ------------------------------------------------------------------ geometry
+    /// <summary>
+    /// The model's box, with the height filled in from measurement when the model leaves it open.
+    /// Before the first measurement a text box is given a nominal height so it is still grabbable.
+    /// </summary>
+    private Box BoxFor(CardElement element)
+    {
+        if (measured.TryGetValue(element.Id, out var box)) return box;
+        return new Box(element.X, element.Y, element.W, element.H ?? 6);
+    }
+
+    private Box? SelectedBox => State.Selected is { } element ? BoxFor(element) : null;
+
+    private static string Frame(Box b) =>
+        $"left:{CardLayout.Css(b.X)}%;top:{CardLayout.Css(b.Y)}%;" +
+        $"width:{CardLayout.Css(b.W)}%;height:{CardLayout.Css(b.H)}%;";
+
+    private double SafeTop => Template?.SafeTop ?? 30;
+    private double SafeBottom => Template?.SafeBottom ?? 75;
+
+    private string SafeBandStyle =>
+        $"top:{CardLayout.Css(SafeTop)}%;height:{CardLayout.Css(SafeBottom - SafeTop)}%;";
+
+    /// <summary>
+    /// A warning, never a block. A designer sometimes wants a name over the flowers, and the
+    /// editor has no business deciding that for them.
+    /// </summary>
+    private bool IsOutsideSafeBand(CardElement element)
+    {
+        // A photo or an ornament above the band is usually the point, so only text is warned about.
+        if (element.Role is CardRole.Photo or CardRole.Divider) return false;
+
+        var b = BoxFor(element);
+        return b.Y < SafeTop - 1 || b.Y + b.H > SafeBottom + 1;
+    }
+
+    private int WarnedCount => State.Layout.Elements.Count(IsOutsideSafeBand);
+
+    private static string Label(CardElement element) => element.Role switch
+    {
+        CardRole.Names => "نام‌ها",
+        CardRole.Name1 => "نام اول",
+        CardRole.Name2 => "نام دوم",
+        CardRole.Joiner => "کلمه رابط",
+        CardRole.Kicker => "خط بالا",
+        CardRole.Message => "متن دعوت",
+        CardRole.Poem => "شعر",
+        CardRole.Date => "تاریخ",
+        CardRole.Time => "ساعت",
+        CardRole.Address => "نشانی",
+        CardRole.Photo => "عکس",
+        CardRole.Divider => "خط تزئینی",
+        _ => "متن",
+    };
+
+    // ------------------------------------------------------------------ dragging
+    private async Task StartMove(PointerEventArgs e, string id)
+    {
+        State.Select(id);
+        await BeginDrag(e, "move", id, 0);
+    }
+
+    private Task StartResize(PointerEventArgs e, int direction) =>
+        State.SelectedId is { } id ? BeginDrag(e, "resize", id, direction) : Task.CompletedTask;
+
+    private Task StartRotate(PointerEventArgs e) =>
+        State.SelectedId is { } id ? BeginDrag(e, "rotate", id, 0) : Task.CompletedTask;
+
+    private async Task BeginDrag(PointerEventArgs e, string kind, string id, int direction)
+    {
+        if (module is null) return;
+
+        var element = State.Layout.Elements.FirstOrDefault(x => x.Id == id);
+        if (element is null) return;
+
+        var rect = await module.InvokeAsync<MeasuredCard>("cardRect", cardHost);
+        if (rect.W <= 0 || rect.H <= 0) return;
+
+        // Without capture, a drag that outruns the element stops getting events and the box is
+        // left half-moved under the cursor.
+        await module.InvokeVoidAsync("capture", cardHost, e.PointerId);
+
+        State.BeginGesture();
+
+        dragging = new Drag(kind, id, e.ClientX, e.ClientY, element,
+            new Box(rect.X, rect.Y, rect.W, rect.H), BoxFor(element), direction);
+    }
+
+    public sealed record MeasuredCard(double X, double Y, double W, double H);
+
+    private void OnPointerMove(PointerEventArgs e)
+    {
+        if (dragging is not { } drag) return;
+
+        // Pixels to percentages of the card, so the same gesture means the same thing whatever
+        // size the canvas is on screen.
+        var dx = (e.ClientX - drag.StartX) / drag.Card.W * 100;
+        var dy = (e.ClientY - drag.StartY) / drag.Card.H * 100;
+
+        switch (drag.Kind)
+        {
+            case "move":
+                State.Update(el => el with
+                {
+                    X = drag.Original.X + dx,
+                    Y = drag.Original.Y + dy,
+                });
+                break;
+
+            case "resize":
+                // Dragging the west handle grows the box leftwards, so the left edge moves too.
+                var width = drag.Original.W + dx * drag.Direction;
+                State.Update(el => el with
+                {
+                    W = width,
+                    X = drag.Direction < 0 ? drag.Original.X + dx : drag.Original.X,
+                    H = el.H is null ? null : drag.Original.H,
+                });
+                break;
+
+            case "rotate":
+                var centreX = drag.Card.X + (drag.Element.X + drag.Element.W / 2) / 100 * drag.Card.W;
+                var centreY = drag.Card.Y + (drag.Element.Y + drag.Element.H / 2) / 100 * drag.Card.H;
+                var angle = Math.Atan2(e.ClientY - centreY, e.ClientX - centreX) * 180 / Math.PI + 90;
+
+                // Shift snaps to fifteen degrees, which is how you get a deliberate tilt rather
+                // than a nearly-straight one.
+                if (e.ShiftKey) angle = Math.Round(angle / 15) * 15;
+
+                State.Update(el => el with { Rotation = angle });
+                break;
+        }
+    }
+
+    private async Task OnPointerUp(PointerEventArgs e)
+    {
+        if (dragging is null) return;
+        dragging = null;
+        State.EndGesture();
+
+        if (module is not null)
+            await module.InvokeVoidAsync("release", cardHost, e.PointerId);
+    }
+
+    // ------------------------------------------------------------------ keyboard
+    private void OnKeyDown(KeyboardEventArgs e)
+    {
+        if (State.Selected is null) return;
+
+        var step = e.ShiftKey ? 2.0 : 0.5;
+
+        switch (e.Key)
+        {
+            case "ArrowLeft": Nudge(-step, 0); break;
+            case "ArrowRight": Nudge(step, 0); break;
+            case "ArrowUp": Nudge(0, -step); break;
+            case "ArrowDown": Nudge(0, step); break;
+            case "Delete":
+            case "Backspace": State.Remove(); break;
+            case "Escape": State.Select(null); break;
+            case "Tab": Cycle(e.ShiftKey ? -1 : 1); break;
+        }
+    }
+
+    /// <summary>Moves the selection along the element list, so the canvas is usable without a mouse.</summary>
+    private void Cycle(int direction)
+    {
+        var elements = State.Layout.Elements;
+        if (elements.Count == 0) return;
+
+        var current = elements.ToList().FindIndex(e => e.Id == State.SelectedId);
+        var next = ((current + direction) % elements.Count + elements.Count) % elements.Count;
+        State.Select(elements[next].Id);
+    }
+
+    private void Nudge(double dx, double dy) =>
+        State.Update(el => el with { X = el.X + dx, Y = el.Y + dy });
+
+    public async ValueTask DisposeAsync()
+    {
+        State.Changed -= OnStateChanged;
+
+        if (module is not null)
+        {
+            try { await module.DisposeAsync(); }
+            catch (JSDisconnectedException) { /* the circuit is already gone */ }
+        }
+    }
+}

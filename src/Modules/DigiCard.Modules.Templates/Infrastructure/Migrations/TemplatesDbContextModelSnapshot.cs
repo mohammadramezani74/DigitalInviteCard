@@ -34,32 +34,642 @@ namespace DigiCard.Modules.Templates.Infrastructure.Migrations
                         .HasMaxLength(7)
                         .HasColumnType("nvarchar(7)");
 
+                    b.Property<string>("Artwork")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.Property<string>("Background")
+                        .IsRequired()
+                        .HasMaxLength(240)
+                        .HasColumnType("nvarchar(240)");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<string>("Elements")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(max)")
+                        .HasDefaultValue("");
+
+                    b.Property<string>("Family")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<string>("Frame")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Ink")
+                        .IsRequired()
+                        .HasMaxLength(7)
+                        .HasColumnType("nvarchar(7)");
+
+                    b.Property<string>("Layout")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(120)
                         .HasColumnType("nvarchar(120)");
+
+                    b.Property<string>("Ornament")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<int>("SafeBottom")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(75);
+
+                    b.Property<int>("SafeTop")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(30);
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.Property<string>("Typeface")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<int>("Version")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Category");
+
+                    b.HasIndex("Slug")
+                        .IsUnique();
+
                     b.ToTable("Templates", "templates");
 
                     b.HasData(
                         new
                         {
-                            Id = new Guid("a41a6319-3438-4ef9-89da-fae6b30b0101"),
-                            Accent = "#52796f",
-                            Name = "باغ ایرانی",
+                            Id = new Guid("a41a6319-3438-4ef9-89da-fae6b30b0103"),
+                            Accent = "#847b57",
+                            Artwork = "sepid-sade",
+                            Background = "linear-gradient(180deg,#fffdf9 0%,#f6f1e8 100%)",
+                            Category = "wedding",
+                            Elements = "[{\"id\":\"kicker\",\"role\":\"kicker\",\"x\":10,\"y\":44.72,\"w\":80,\"rotation\":0,\"z\":10,\"style\":{\"fontSize\":3.2,\"font\":\"body\",\"weight\":\"normal\",\"align\":\"center\",\"color\":\"muted\",\"lineHeight\":1.6,\"opacity\":1,\"variant\":\"plain\",\"digits\":\"fa\",\"frame\":\"none\",\"feather\":0,\"hasLiteralColor\":false}},{\"id\":\"names\",\"role\":\"names\",\"x\":6,\"y\":51.2,\"w\":88,\"rotation\":0,\"z\":20,\"style\":{\"fontSize\":8.4,\"font\":\"display\",\"weight\":\"bold\",\"align\":\"center\",\"color\":\"ink\",\"lineHeight\":1.35,\"opacity\":1,\"variant\":\"plain\",\"digits\":\"fa\",\"frame\":\"none\",\"feather\":0,\"hasLiteralColor\":false}},{\"id\":\"divider\",\"role\":\"divider\",\"x\":32,\"y\":64.16,\"w\":36,\"h\":3,\"rotation\":0,\"z\":15,\"style\":{\"fontSize\":4,\"font\":\"body\",\"weight\":\"normal\",\"align\":\"center\",\"color\":\"accent\",\"lineHeight\":1.7,\"opacity\":0.8,\"variant\":\"rule\",\"digits\":\"fa\",\"frame\":\"none\",\"feather\":0,\"hasLiteralColor\":false}},{\"id\":\"message\",\"role\":\"message\",\"x\":12,\"y\":68.48,\"w\":76,\"rotation\":0,\"z\":10,\"style\":{\"fontSize\":3.6,\"font\":\"body\",\"weight\":\"normal\",\"align\":\"center\",\"color\":\"ink\",\"lineHeight\":1.9,\"opacity\":1,\"variant\":\"plain\",\"digits\":\"fa\",\"frame\":\"none\",\"feather\":0,\"hasLiteralColor\":false}}]",
+                            Family = "minimal",
+                            Frame = "none",
+                            Ink = "#3c3a36",
+                            Layout = "centered",
+                            Name = "سپید ساده",
+                            Ornament = "rule",
+                            SafeBottom = 80,
+                            SafeTop = 44,
+                            Slug = "sepid-sade",
+                            Typeface = "serif",
+                            Version = 2
+                        },
+                        new
+                        {
+                            Id = new Guid("a41a6319-3438-4ef9-89da-fae6b30b0104"),
+                            Accent = "#7c764f",
+                            Artwork = "khat-e-noor",
+                            Background = "#fbfaf7",
+                            Category = "aghd",
+                            Elements = "[{\"id\":\"kicker\",\"role\":\"kicker\",\"x\":10,\"y\":22.72,\"w\":80,\"rotation\":0,\"z\":10,\"style\":{\"fontSize\":3.2,\"font\":\"body\",\"weight\":\"normal\",\"align\":\"center\",\"color\":\"muted\",\"lineHeight\":1.6,\"opacity\":1,\"variant\":\"plain\",\"digits\":\"fa\",\"frame\":\"none\",\"feather\":0,\"hasLiteralColor\":false}},{\"id\":\"names\",\"role\":\"names\",\"x\":6,\"y\":29.2,\"w\":88,\"rotation\":0,\"z\":20,\"style\":{\"fontSize\":8.4,\"font\":\"display\",\"weight\":\"bold\",\"align\":\"center\",\"color\":\"ink\",\"lineHeight\":1.35,\"opacity\":1,\"variant\":\"plain\",\"digits\":\"fa\",\"frame\":\"none\",\"feather\":0,\"hasLiteralColor\":false}},{\"id\":\"divider\",\"role\":\"divider\",\"x\":32,\"y\":42.16,\"w\":36,\"h\":3,\"rotation\":0,\"z\":15,\"style\":{\"fontSize\":4,\"font\":\"body\",\"weight\":\"normal\",\"align\":\"center\",\"color\":\"accent\",\"lineHeight\":1.7,\"opacity\":0.8,\"variant\":\"rule\",\"digits\":\"fa\",\"frame\":\"none\",\"feather\":0,\"hasLiteralColor\":false}},{\"id\":\"message\",\"role\":\"message\",\"x\":12,\"y\":46.48,\"w\":76,\"rotation\":0,\"z\":10,\"style\":{\"fontSize\":3.6,\"font\":\"body\",\"weight\":\"normal\",\"align\":\"center\",\"color\":\"ink\",\"lineHeight\":1.9,\"opacity\":1,\"variant\":\"plain\",\"digits\":\"fa\",\"frame\":\"none\",\"feather\":0,\"hasLiteralColor\":false}}]",
+                            Family = "minimal",
+                            Frame = "none",
+                            Ink = "#3c3a36",
+                            Layout = "centered",
+                            Name = "خط نور",
+                            Ornament = "dot",
+                            SafeBottom = 58,
+                            SafeTop = 22,
+                            Slug = "khat-e-noor",
+                            Typeface = "display",
+                            Version = 2
+                        },
+                        new
+                        {
+                            Id = new Guid("a41a6319-3438-4ef9-89da-fae6b30b0105"),
+                            Accent = "#807547",
+                            Artwork = "sadegi-talaei",
+                            Background = "linear-gradient(180deg,#fdfbf6 0%,#f4ecdd 100%)",
+                            Category = "anniversary",
+                            Elements = "[{\"id\":\"kicker\",\"role\":\"kicker\",\"x\":10,\"y\":22.72,\"w\":80,\"rotation\":0,\"z\":10,\"style\":{\"fontSize\":3.2,\"font\":\"body\",\"weight\":\"normal\",\"align\":\"center\",\"color\":\"muted\",\"lineHeight\":1.6,\"opacity\":1,\"variant\":\"plain\",\"digits\":\"fa\",\"frame\":\"none\",\"feather\":0,\"hasLiteralColor\":false}},{\"id\":\"names\",\"role\":\"names\",\"x\":6,\"y\":29.2,\"w\":88,\"rotation\":0,\"z\":20,\"style\":{\"fontSize\":8.4,\"font\":\"display\",\"weight\":\"bold\",\"align\":\"center\",\"color\":\"ink\",\"lineHeight\":1.35,\"opacity\":1,\"variant\":\"plain\",\"digits\":\"fa\",\"frame\":\"none\",\"feather\":0,\"hasLiteralColor\":false}},{\"id\":\"divider\",\"role\":\"divider\",\"x\":32,\"y\":42.16,\"w\":36,\"h\":3,\"rotation\":0,\"z\":15,\"style\":{\"fontSize\":4,\"font\":\"body\",\"weight\":\"normal\",\"align\":\"center\",\"color\":\"accent\",\"lineHeight\":1.7,\"opacity\":0.8,\"variant\":\"rule\",\"digits\":\"fa\",\"frame\":\"none\",\"feather\":0,\"hasLiteralColor\":false}},{\"id\":\"message\",\"role\":\"message\",\"x\":12,\"y\":46.48,\"w\":76,\"rotation\":0,\"z\":10,\"style\":{\"fontSize\":3.6,\"font\":\"body\",\"weight\":\"normal\",\"align\":\"center\",\"color\":\"ink\",\"lineHeight\":1.9,\"opacity\":1,\"variant\":\"plain\",\"digits\":\"fa\",\"frame\":\"none\",\"feather\":0,\"hasLiteralColor\":false}}]",
+                            Family = "minimal",
+                            Frame = "none",
+                            Ink = "#3c3a36",
+                            Layout = "centered",
+                            Name = "سادگی طلایی",
+                            Ornament = "rule",
+                            SafeBottom = 58,
+                            SafeTop = 22,
+                            Slug = "sadegi-talaei",
+                            Typeface = "display",
+                            Version = 2
+                        },
+                        new
+                        {
+                            Id = new Guid("a41a6319-3438-4ef9-89da-fae6b30b0106"),
+                            Accent = "#c17f8f",
+                            Artwork = "golab-abrang",
+                            Background = "radial-gradient(120% 80% at 50% 0%,#fdeef1 0%,#fbf7f4 55%,#f7eee9 100%)",
+                            Category = "wedding",
+                            Elements = "[{\"id\":\"kicker\",\"role\":\"kicker\",\"x\":10,\"y\":37.6,\"w\":80,\"rotation\":0,\"z\":10,\"style\":{\"fontSize\":3.2,\"font\":\"body\",\"weight\":\"normal\",\"align\":\"center\",\"color\":\"muted\",\"lineHeight\":1.6,\"opacity\":1,\"variant\":\"plain\",\"digits\":\"fa\",\"frame\":\"none\",\"feather\":0,\"hasLiteralColor\":false}},{\"id\":\"names\",\"role\":\"names\",\"x\":6,\"y\":43,\"w\":88,\"rotation\":0,\"z\":20,\"style\":{\"fontSize\":8.4,\"font\":\"display\",\"weight\":\"bold\",\"align\":\"center\",\"color\":\"ink\",\"lineHeight\":1.35,\"opacity\":1,\"variant\":\"plain\",\"digits\":\"fa\",\"frame\":\"none\",\"feather\":0,\"hasLiteralColor\":false}},{\"id\":\"divider\",\"role\":\"divider\",\"x\":32,\"y\":53.8,\"w\":36,\"h\":3,\"rotation\":0,\"z\":15,\"style\":{\"fontSize\":4,\"font\":\"body\",\"weight\":\"normal\",\"align\":\"center\",\"color\":\"accent\",\"lineHeight\":1.7,\"opacity\":0.8,\"variant\":\"rule\",\"digits\":\"fa\",\"frame\":\"none\",\"feather\":0,\"hasLiteralColor\":false}},{\"id\":\"message\",\"role\":\"message\",\"x\":12,\"y\":57.4,\"w\":76,\"rotation\":0,\"z\":10,\"style\":{\"fontSize\":3.6,\"font\":\"body\",\"weight\":\"normal\",\"align\":\"center\",\"color\":\"ink\",\"lineHeight\":1.9,\"opacity\":1,\"variant\":\"plain\",\"digits\":\"fa\",\"frame\":\"none\",\"feather\":0,\"hasLiteralColor\":false}}]",
+                            Family = "watercolor",
+                            Frame = "none",
+                            Ink = "#4a3a3e",
+                            Layout = "centered",
+                            Name = "گلاب آبرنگ",
+                            Ornament = "floral",
+                            SafeBottom = 67,
+                            SafeTop = 37,
+                            Slug = "golab-abrang",
+                            Typeface = "serif",
                             Version = 1
                         },
                         new
                         {
+                            Id = new Guid("a41a6319-3438-4ef9-89da-fae6b30b0107"),
+                            Accent = "#85785d",
+                            Artwork = "shaghayegh",
+                            Background = "radial-gradient(100% 70% at 20% 10%,#fdeceb 0%,#fcf8f5 60%,#f8f1ec 100%)",
+                            Category = "engagement",
+                            Elements = "[{\"id\":\"kicker\",\"role\":\"kicker\",\"x\":10,\"y\":40.72,\"w\":80,\"rotation\":0,\"z\":10,\"style\":{\"fontSize\":3.2,\"font\":\"body\",\"weight\":\"normal\",\"align\":\"center\",\"color\":\"muted\",\"lineHeight\":1.6,\"opacity\":1,\"variant\":\"plain\",\"digits\":\"fa\",\"frame\":\"none\",\"feather\":0,\"hasLiteralColor\":false}},{\"id\":\"names\",\"role\":\"names\",\"x\":6,\"y\":47.2,\"w\":88,\"rotation\":0,\"z\":20,\"style\":{\"fontSize\":8.4,\"font\":\"display\",\"weight\":\"bold\",\"align\":\"center\",\"color\":\"ink\",\"lineHeight\":1.35,\"opacity\":1,\"variant\":\"plain\",\"digits\":\"fa\",\"frame\":\"none\",\"feather\":0,\"hasLiteralColor\":false}},{\"id\":\"divider\",\"role\":\"divider\",\"x\":32,\"y\":60.16,\"w\":36,\"h\":3,\"rotation\":0,\"z\":15,\"style\":{\"fontSize\":4,\"font\":\"body\",\"weight\":\"normal\",\"align\":\"center\",\"color\":\"accent\",\"lineHeight\":1.7,\"opacity\":0.8,\"variant\":\"rule\",\"digits\":\"fa\",\"frame\":\"none\",\"feather\":0,\"hasLiteralColor\":false}},{\"id\":\"message\",\"role\":\"message\",\"x\":12,\"y\":64.48,\"w\":76,\"rotation\":0,\"z\":10,\"style\":{\"fontSize\":3.6,\"font\":\"body\",\"weight\":\"normal\",\"align\":\"center\",\"color\":\"ink\",\"lineHeight\":1.9,\"opacity\":1,\"variant\":\"plain\",\"digits\":\"fa\",\"frame\":\"none\",\"feather\":0,\"hasLiteralColor\":false}}]",
+                            Family = "watercolor",
+                            Frame = "none",
+                            Ink = "#3c3a36",
+                            Layout = "centered",
+                            Name = "شقایق",
+                            Ornament = "floral",
+                            SafeBottom = 76,
+                            SafeTop = 40,
+                            Slug = "shaghayegh",
+                            Typeface = "serif",
+                            Version = 2
+                        },
+                        new
+                        {
+                            Id = new Guid("a41a6319-3438-4ef9-89da-fae6b30b0108"),
+                            Accent = "#6d5c7f",
+                            Artwork = "banafsheh",
+                            Background = "radial-gradient(110% 80% at 80% 0%,#f1edfa 0%,#faf8fc 55%,#f4f1f7 100%)",
+                            Category = "baleboron",
+                            Elements = "[{\"id\":\"kicker\",\"role\":\"kicker\",\"x\":10,\"y\":45.72,\"w\":80,\"rotation\":0,\"z\":10,\"style\":{\"fontSize\":3.2,\"font\":\"body\",\"weight\":\"normal\",\"align\":\"center\",\"color\":\"muted\",\"lineHeight\":1.6,\"opacity\":1,\"variant\":\"plain\",\"digits\":\"fa\",\"frame\":\"none\",\"feather\":0,\"hasLiteralColor\":false}},{\"id\":\"names\",\"role\":\"names\",\"x\":6,\"y\":52.2,\"w\":88,\"rotation\":0,\"z\":20,\"style\":{\"fontSize\":8.4,\"font\":\"display\",\"weight\":\"bold\",\"align\":\"center\",\"color\":\"ink\",\"lineHeight\":1.35,\"opacity\":1,\"variant\":\"plain\",\"digits\":\"fa\",\"frame\":\"none\",\"feather\":0,\"hasLiteralColor\":false}},{\"id\":\"divider\",\"role\":\"divider\",\"x\":32,\"y\":65.16,\"w\":36,\"h\":3,\"rotation\":0,\"z\":15,\"style\":{\"fontSize\":4,\"font\":\"body\",\"weight\":\"normal\",\"align\":\"center\",\"color\":\"accent\",\"lineHeight\":1.7,\"opacity\":0.8,\"variant\":\"rule\",\"digits\":\"fa\",\"frame\":\"none\",\"feather\":0,\"hasLiteralColor\":false}},{\"id\":\"message\",\"role\":\"message\",\"x\":12,\"y\":69.48,\"w\":76,\"rotation\":0,\"z\":10,\"style\":{\"fontSize\":3.6,\"font\":\"body\",\"weight\":\"normal\",\"align\":\"center\",\"color\":\"ink\",\"lineHeight\":1.9,\"opacity\":1,\"variant\":\"plain\",\"digits\":\"fa\",\"frame\":\"none\",\"feather\":0,\"hasLiteralColor\":false}}]",
+                            Family = "watercolor",
+                            Frame = "none",
+                            Ink = "#3c3a36",
+                            Layout = "centered",
+                            Name = "بنفشه",
+                            Ornament = "floral",
+                            SafeBottom = 81,
+                            SafeTop = 45,
+                            Slug = "banafsheh",
+                            Typeface = "serif",
+                            Version = 2
+                        },
+                        new
+                        {
+                            Id = new Guid("a41a6319-3438-4ef9-89da-fae6b30b0109"),
+                            Accent = "#80673d",
+                            Artwork = "hana-o-gol",
+                            Background = "linear-gradient(160deg,#fdf4e4 0%,#fbf6ee 55%,#f6ead6 100%)",
+                            Category = "hanabandan",
+                            Elements = "[{\"id\":\"kicker\",\"role\":\"kicker\",\"x\":10,\"y\":14.72,\"w\":80,\"rotation\":0,\"z\":10,\"style\":{\"fontSize\":3.2,\"font\":\"body\",\"weight\":\"normal\",\"align\":\"center\",\"color\":\"muted\",\"lineHeight\":1.6,\"opacity\":1,\"variant\":\"plain\",\"digits\":\"fa\",\"frame\":\"none\",\"feather\":0,\"hasLiteralColor\":false}},{\"id\":\"names\",\"role\":\"names\",\"x\":6,\"y\":21.2,\"w\":88,\"rotation\":0,\"z\":20,\"style\":{\"fontSize\":8.4,\"font\":\"display\",\"weight\":\"bold\",\"align\":\"center\",\"color\":\"ink\",\"lineHeight\":1.35,\"opacity\":1,\"variant\":\"plain\",\"digits\":\"fa\",\"frame\":\"none\",\"feather\":0,\"hasLiteralColor\":false}},{\"id\":\"divider\",\"role\":\"divider\",\"x\":32,\"y\":34.16,\"w\":36,\"h\":3,\"rotation\":0,\"z\":15,\"style\":{\"fontSize\":4,\"font\":\"body\",\"weight\":\"normal\",\"align\":\"center\",\"color\":\"accent\",\"lineHeight\":1.7,\"opacity\":0.8,\"variant\":\"rule\",\"digits\":\"fa\",\"frame\":\"none\",\"feather\":0,\"hasLiteralColor\":false}},{\"id\":\"message\",\"role\":\"message\",\"x\":12,\"y\":38.48,\"w\":76,\"rotation\":0,\"z\":10,\"style\":{\"fontSize\":3.6,\"font\":\"body\",\"weight\":\"normal\",\"align\":\"center\",\"color\":\"ink\",\"lineHeight\":1.9,\"opacity\":1,\"variant\":\"plain\",\"digits\":\"fa\",\"frame\":\"none\",\"feather\":0,\"hasLiteralColor\":false}}]",
+                            Family = "watercolor",
+                            Frame = "none",
+                            Ink = "#3c3a36",
+                            Layout = "centered",
+                            Name = "حنا و گل",
+                            Ornament = "floral",
+                            SafeBottom = 50,
+                            SafeTop = 14,
+                            Slug = "hana-o-gol",
+                            Typeface = "serif",
+                            Version = 2
+                        },
+                        new
+                        {
+                            Id = new Guid("a41a6319-3438-4ef9-89da-fae6b30b0101"),
+                            Accent = "#918063",
+                            Artwork = "bagh-e-irani",
+                            Background = "linear-gradient(180deg,#f4f7f3 0%,#e9f0ea 100%)",
+                            Category = "wedding",
+                            Elements = "[{\"id\":\"kicker\",\"role\":\"kicker\",\"x\":10,\"y\":31.72,\"w\":80,\"rotation\":0,\"z\":10,\"style\":{\"fontSize\":3.2,\"font\":\"body\",\"weight\":\"normal\",\"align\":\"center\",\"color\":\"muted\",\"lineHeight\":1.6,\"opacity\":1,\"variant\":\"plain\",\"digits\":\"fa\",\"frame\":\"none\",\"feather\":0,\"hasLiteralColor\":false}},{\"id\":\"names\",\"role\":\"names\",\"x\":6,\"y\":38.2,\"w\":88,\"rotation\":0,\"z\":20,\"style\":{\"fontSize\":8.4,\"font\":\"display\",\"weight\":\"bold\",\"align\":\"center\",\"color\":\"ink\",\"lineHeight\":1.35,\"opacity\":1,\"variant\":\"plain\",\"digits\":\"fa\",\"frame\":\"none\",\"feather\":0,\"hasLiteralColor\":false}},{\"id\":\"divider\",\"role\":\"divider\",\"x\":32,\"y\":51.16,\"w\":36,\"h\":3,\"rotation\":0,\"z\":15,\"style\":{\"fontSize\":4,\"font\":\"body\",\"weight\":\"normal\",\"align\":\"center\",\"color\":\"accent\",\"lineHeight\":1.7,\"opacity\":0.8,\"variant\":\"rule\",\"digits\":\"fa\",\"frame\":\"none\",\"feather\":0,\"hasLiteralColor\":false}},{\"id\":\"message\",\"role\":\"message\",\"x\":12,\"y\":55.48,\"w\":76,\"rotation\":0,\"z\":10,\"style\":{\"fontSize\":3.6,\"font\":\"body\",\"weight\":\"normal\",\"align\":\"center\",\"color\":\"ink\",\"lineHeight\":1.9,\"opacity\":1,\"variant\":\"plain\",\"digits\":\"fa\",\"frame\":\"none\",\"feather\":0,\"hasLiteralColor\":false}}]",
+                            Family = "persian",
+                            Frame = "none",
+                            Ink = "#3c3a36",
+                            Layout = "centered",
+                            Name = "باغ ایرانی",
+                            Ornament = "paisley",
+                            SafeBottom = 67,
+                            SafeTop = 31,
+                            Slug = "bagh-e-irani",
+                            Typeface = "serif",
+                            Version = 2
+                        },
+                        new
+                        {
+                            Id = new Guid("a41a6319-3438-4ef9-89da-fae6b30b010b"),
+                            Accent = "#566c84",
+                            Artwork = "kashi-firouzeh",
+                            Background = "linear-gradient(180deg,#eff7f8 0%,#e2eff1 100%)",
+                            Category = "hanabandan",
+                            Elements = "[{\"id\":\"kicker\",\"role\":\"kicker\",\"x\":10,\"y\":34.72,\"w\":80,\"rotation\":0,\"z\":10,\"style\":{\"fontSize\":3.2,\"font\":\"body\",\"weight\":\"normal\",\"align\":\"center\",\"color\":\"muted\",\"lineHeight\":1.6,\"opacity\":1,\"variant\":\"plain\",\"digits\":\"fa\",\"frame\":\"none\",\"feather\":0,\"hasLiteralColor\":false}},{\"id\":\"names\",\"role\":\"names\",\"x\":6,\"y\":41.2,\"w\":88,\"rotation\":0,\"z\":20,\"style\":{\"fontSize\":8.4,\"font\":\"display\",\"weight\":\"bold\",\"align\":\"center\",\"color\":\"ink\",\"lineHeight\":1.35,\"opacity\":1,\"variant\":\"plain\",\"digits\":\"fa\",\"frame\":\"none\",\"feather\":0,\"hasLiteralColor\":false}},{\"id\":\"divider\",\"role\":\"divider\",\"x\":32,\"y\":54.16,\"w\":36,\"h\":3,\"rotation\":0,\"z\":15,\"style\":{\"fontSize\":4,\"font\":\"body\",\"weight\":\"normal\",\"align\":\"center\",\"color\":\"accent\",\"lineHeight\":1.7,\"opacity\":0.8,\"variant\":\"rule\",\"digits\":\"fa\",\"frame\":\"none\",\"feather\":0,\"hasLiteralColor\":false}},{\"id\":\"message\",\"role\":\"message\",\"x\":12,\"y\":58.48,\"w\":76,\"rotation\":0,\"z\":10,\"style\":{\"fontSize\":3.6,\"font\":\"body\",\"weight\":\"normal\",\"align\":\"center\",\"color\":\"ink\",\"lineHeight\":1.9,\"opacity\":1,\"variant\":\"plain\",\"digits\":\"fa\",\"frame\":\"none\",\"feather\":0,\"hasLiteralColor\":false}}]",
+                            Family = "persian",
+                            Frame = "none",
+                            Ink = "#3c3a36",
+                            Layout = "centered",
+                            Name = "کاشی فیروزه",
+                            Ornament = "geometric",
+                            SafeBottom = 70,
+                            SafeTop = 34,
+                            Slug = "kashi-firouzeh",
+                            Typeface = "display",
+                            Version = 2
+                        },
+                        new
+                        {
                             Id = new Guid("a41a6319-3438-4ef9-89da-fae6b30b0102"),
-                            Accent = "#a56b7d",
+                            Accent = "#8a7c5c",
+                            Artwork = "roz-o-morvarid",
+                            Background = "linear-gradient(180deg,#fbf4f6 0%,#f2e6ea 100%)",
+                            Category = "wedding",
+                            Elements = "[{\"id\":\"kicker\",\"role\":\"kicker\",\"x\":10,\"y\":26.72,\"w\":80,\"rotation\":0,\"z\":10,\"style\":{\"fontSize\":3.2,\"font\":\"body\",\"weight\":\"normal\",\"align\":\"center\",\"color\":\"muted\",\"lineHeight\":1.6,\"opacity\":1,\"variant\":\"plain\",\"digits\":\"fa\",\"frame\":\"none\",\"feather\":0,\"hasLiteralColor\":false}},{\"id\":\"names\",\"role\":\"names\",\"x\":6,\"y\":33.2,\"w\":88,\"rotation\":0,\"z\":20,\"style\":{\"fontSize\":8.4,\"font\":\"display\",\"weight\":\"bold\",\"align\":\"center\",\"color\":\"ink\",\"lineHeight\":1.35,\"opacity\":1,\"variant\":\"plain\",\"digits\":\"fa\",\"frame\":\"none\",\"feather\":0,\"hasLiteralColor\":false}},{\"id\":\"divider\",\"role\":\"divider\",\"x\":32,\"y\":46.16,\"w\":36,\"h\":3,\"rotation\":0,\"z\":15,\"style\":{\"fontSize\":4,\"font\":\"body\",\"weight\":\"normal\",\"align\":\"center\",\"color\":\"accent\",\"lineHeight\":1.7,\"opacity\":0.8,\"variant\":\"rule\",\"digits\":\"fa\",\"frame\":\"none\",\"feather\":0,\"hasLiteralColor\":false}},{\"id\":\"message\",\"role\":\"message\",\"x\":12,\"y\":50.48,\"w\":76,\"rotation\":0,\"z\":10,\"style\":{\"fontSize\":3.6,\"font\":\"body\",\"weight\":\"normal\",\"align\":\"center\",\"color\":\"ink\",\"lineHeight\":1.9,\"opacity\":1,\"variant\":\"plain\",\"digits\":\"fa\",\"frame\":\"none\",\"feather\":0,\"hasLiteralColor\":false}}]",
+                            Family = "photo",
+                            Frame = "none",
+                            Ink = "#3c3a36",
+                            Layout = "centered",
                             Name = "رز و مروارید",
-                            Version = 1
+                            Ornament = "dot",
+                            SafeBottom = 62,
+                            SafeTop = 26,
+                            Slug = "roz-o-morvarid",
+                            Typeface = "serif",
+                            Version = 2
+                        },
+                        new
+                        {
+                            Id = new Guid("a41a6319-3438-4ef9-89da-fae6b30b010c"),
+                            Accent = "#7d6143",
+                            Artwork = "ghab-e-khatereh",
+                            Background = "linear-gradient(180deg,#f6f7f9 0%,#e9ebef 100%)",
+                            Category = "anniversary",
+                            Elements = "[{\"id\":\"kicker\",\"role\":\"kicker\",\"x\":10,\"y\":33.72,\"w\":80,\"rotation\":0,\"z\":10,\"style\":{\"fontSize\":3.2,\"font\":\"body\",\"weight\":\"normal\",\"align\":\"center\",\"color\":\"muted\",\"lineHeight\":1.6,\"opacity\":1,\"variant\":\"plain\",\"digits\":\"fa\",\"frame\":\"none\",\"feather\":0,\"hasLiteralColor\":false}},{\"id\":\"names\",\"role\":\"names\",\"x\":6,\"y\":40.2,\"w\":88,\"rotation\":0,\"z\":20,\"style\":{\"fontSize\":8.4,\"font\":\"display\",\"weight\":\"bold\",\"align\":\"center\",\"color\":\"ink\",\"lineHeight\":1.35,\"opacity\":1,\"variant\":\"plain\",\"digits\":\"fa\",\"frame\":\"none\",\"feather\":0,\"hasLiteralColor\":false}},{\"id\":\"divider\",\"role\":\"divider\",\"x\":32,\"y\":53.16,\"w\":36,\"h\":3,\"rotation\":0,\"z\":15,\"style\":{\"fontSize\":4,\"font\":\"body\",\"weight\":\"normal\",\"align\":\"center\",\"color\":\"accent\",\"lineHeight\":1.7,\"opacity\":0.8,\"variant\":\"rule\",\"digits\":\"fa\",\"frame\":\"none\",\"feather\":0,\"hasLiteralColor\":false}},{\"id\":\"message\",\"role\":\"message\",\"x\":12,\"y\":57.48,\"w\":76,\"rotation\":0,\"z\":10,\"style\":{\"fontSize\":3.6,\"font\":\"body\",\"weight\":\"normal\",\"align\":\"center\",\"color\":\"ink\",\"lineHeight\":1.9,\"opacity\":1,\"variant\":\"plain\",\"digits\":\"fa\",\"frame\":\"none\",\"feather\":0,\"hasLiteralColor\":false}}]",
+                            Family = "photo",
+                            Frame = "none",
+                            Ink = "#3c3a36",
+                            Layout = "centered",
+                            Name = "قاب خاطره",
+                            Ornament = "rule",
+                            SafeBottom = 69,
+                            SafeTop = 33,
+                            Slug = "ghab-e-khatereh",
+                            Typeface = "serif",
+                            Version = 2
+                        });
+                });
+
+            modelBuilder.Entity("DigiCard.Modules.Templates.Occasion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("DefaultKicker")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<string>("DefaultMessage")
+                        .IsRequired()
+                        .HasMaxLength(400)
+                        .HasColumnType("nvarchar(400)");
+
+                    b.Property<string>("Icon")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Joiner")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<string>("PrimaryLabel")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.Property<string>("SecondaryLabel")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Tagline")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Slug")
+                        .IsUnique();
+
+                    b.HasIndex("IsActive", "SortOrder");
+
+                    b.ToTable("Occasions", "templates");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("b7c41f20-0000-4000-9000-000000000001"),
+                            DefaultKicker = "آغاز یک زندگی، کنار هم",
+                            DefaultMessage = "با حضور شما شادی ما کامل می‌شود",
+                            Icon = "wedding",
+                            IsActive = true,
+                            Joiner = "و",
+                            PrimaryLabel = "نام عروس",
+                            SecondaryLabel = "نام داماد",
+                            Slug = "wedding",
+                            SortOrder = 1,
+                            Tagline = "دعوت‌نامه جشن عروسی",
+                            Title = "عروسی"
+                        },
+                        new
+                        {
+                            Id = new Guid("b7c41f20-0000-4000-9000-000000000002"),
+                            DefaultKicker = "پیوند دو دل",
+                            DefaultMessage = "با حضور شما شادی ما کامل می‌شود",
+                            Icon = "aghd",
+                            IsActive = true,
+                            Joiner = "و",
+                            PrimaryLabel = "نام عروس",
+                            SecondaryLabel = "نام داماد",
+                            Slug = "aghd",
+                            SortOrder = 2,
+                            Tagline = "دعوت به مراسم عقد",
+                            Title = "عقد"
+                        },
+                        new
+                        {
+                            Id = new Guid("b7c41f20-0000-4000-9000-000000000003"),
+                            DefaultKicker = "آغاز یک قرار",
+                            DefaultMessage = "به جشن نامزدی ما خوش آمدید",
+                            Icon = "engagement",
+                            IsActive = true,
+                            Joiner = "و",
+                            PrimaryLabel = "نام عروس",
+                            SecondaryLabel = "نام داماد",
+                            Slug = "engagement",
+                            SortOrder = 3,
+                            Tagline = "جشن نامزدی و حلقه",
+                            Title = "نامزدی"
+                        },
+                        new
+                        {
+                            Id = new Guid("b7c41f20-0000-4000-9000-000000000004"),
+                            DefaultKicker = "یک بله، یک آغاز",
+                            DefaultMessage = "در این روز خوش کنار ما باشید",
+                            Icon = "baleboron",
+                            IsActive = true,
+                            Joiner = "و",
+                            PrimaryLabel = "نام عروس",
+                            SecondaryLabel = "نام داماد",
+                            Slug = "baleboron",
+                            SortOrder = 4,
+                            Tagline = "مراسم بله‌برون",
+                            Title = "بله‌برون"
+                        },
+                        new
+                        {
+                            Id = new Guid("b7c41f20-0000-4000-9000-000000000005"),
+                            DefaultKicker = "شب حنا، شب شادی",
+                            DefaultMessage = "در شب حنابندان منتظر شما هستیم",
+                            Icon = "hanabandan",
+                            IsActive = true,
+                            Joiner = "و",
+                            PrimaryLabel = "نام عروس",
+                            SecondaryLabel = "نام داماد",
+                            Slug = "hanabandan",
+                            SortOrder = 5,
+                            Tagline = "شب حنابندان",
+                            Title = "حنابندان"
+                        },
+                        new
+                        {
+                            Id = new Guid("b7c41f20-0000-4000-9000-000000000006"),
+                            DefaultKicker = "سال‌هایی که گذشت",
+                            DefaultMessage = "در جشن سالگرد ما شریک باشید",
+                            Icon = "anniversary",
+                            IsActive = true,
+                            Joiner = "و",
+                            PrimaryLabel = "نام همسر اول",
+                            SecondaryLabel = "نام همسر دوم",
+                            Slug = "anniversary",
+                            SortOrder = 6,
+                            Tagline = "سالگرد و تجدید پیمان",
+                            Title = "سالگرد ازدواج"
+                        },
+                        new
+                        {
+                            Id = new Guid("b7c41f20-0000-4000-9000-000000000007"),
+                            DefaultKicker = "یاد او همیشه با ماست",
+                            DefaultMessage = "به مراسم یادبود ایشان دعوت می‌شوید",
+                            Icon = "memorial",
+                            IsActive = false,
+                            Joiner = "",
+                            PrimaryLabel = "نام درگذشته",
+                            SecondaryLabel = "",
+                            Slug = "memorial",
+                            SortOrder = 7,
+                            Tagline = "یادبود و مراسم ترحیم",
+                            Title = "مجلس ترحیم"
+                        },
+                        new
+                        {
+                            Id = new Guid("b7c41f20-0000-4000-9000-000000000008"),
+                            DefaultKicker = "یک سال تازه",
+                            DefaultMessage = "به جشن تولد دعوتید",
+                            Icon = "birthday",
+                            IsActive = false,
+                            Joiner = "",
+                            PrimaryLabel = "نام صاحب جشن",
+                            SecondaryLabel = "",
+                            Slug = "birthday",
+                            SortOrder = 8,
+                            Tagline = "جشن تولد",
+                            Title = "تولد"
+                        },
+                        new
+                        {
+                            Id = new Guid("b7c41f20-0000-4000-9000-000000000009"),
+                            DefaultKicker = "برای پدر",
+                            DefaultMessage = "روزت مبارک",
+                            Icon = "fathers-day",
+                            IsActive = false,
+                            Joiner = "",
+                            PrimaryLabel = "نام پدر",
+                            SecondaryLabel = "",
+                            Slug = "fathers-day",
+                            SortOrder = 9,
+                            Tagline = "تبریک روز پدر",
+                            Title = "روز پدر"
+                        },
+                        new
+                        {
+                            Id = new Guid("b7c41f20-0000-4000-9000-000000000010"),
+                            DefaultKicker = "برای مادر",
+                            DefaultMessage = "روزت مبارک",
+                            Icon = "mothers-day",
+                            IsActive = false,
+                            Joiner = "",
+                            PrimaryLabel = "نام مادر",
+                            SecondaryLabel = "",
+                            Slug = "mothers-day",
+                            SortOrder = 10,
+                            Tagline = "تبریک روز مادر",
+                            Title = "روز مادر"
+                        },
+                        new
+                        {
+                            Id = new Guid("b7c41f20-0000-4000-9000-000000000011"),
+                            DefaultKicker = "روز دانشجو",
+                            DefaultMessage = "گرامی باد",
+                            Icon = "students-day",
+                            IsActive = false,
+                            Joiner = "",
+                            PrimaryLabel = "نام مناسبت",
+                            SecondaryLabel = "",
+                            Slug = "students-day",
+                            SortOrder = 11,
+                            Tagline = "گرامیداشت روز دانشجو",
+                            Title = "روز دانشجو"
+                        });
+                });
+
+            modelBuilder.Entity("DigiCard.Modules.Templates.Poem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("OccasionSlug")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<string>("Poet")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(400)
+                        .HasColumnType("nvarchar(400)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsActive", "OccasionSlug", "SortOrder");
+
+                    b.ToTable("Poems", "templates");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("c3d52a10-0000-4000-9000-000000000001"),
+                            IsActive = true,
+                            OccasionSlug = "",
+                            Poet = "حافظ",
+                            SortOrder = 1,
+                            Text = "درخت دوستی بنشان که کام دل به بار آرد\nنهال دشمنی برکن که رنج بی‌شمار آرد"
+                        },
+                        new
+                        {
+                            Id = new Guid("c3d52a10-0000-4000-9000-000000000002"),
+                            IsActive = true,
+                            OccasionSlug = "",
+                            Poet = "حافظ",
+                            SortOrder = 2,
+                            Text = "دست از طلب ندارم تا کام من برآید\nیا تن رسد به جانان یا جان ز تن برآید"
+                        },
+                        new
+                        {
+                            Id = new Guid("c3d52a10-0000-4000-9000-000000000003"),
+                            IsActive = true,
+                            OccasionSlug = "",
+                            Poet = "حافظ",
+                            SortOrder = 3,
+                            Text = "مرا مهر سیه‌چشمان ز سر بیرون نخواهد شد\nقضای آسمان است این و دیگرگون نخواهد شد"
+                        },
+                        new
+                        {
+                            Id = new Guid("c3d52a10-0000-4000-9000-000000000004"),
+                            IsActive = true,
+                            OccasionSlug = "",
+                            Poet = "سعدی",
+                            SortOrder = 4,
+                            Text = "به جهان خرم از آنم که جهان خرم از اوست\nعاشقم بر همه عالم که همه عالم از اوست"
+                        },
+                        new
+                        {
+                            Id = new Guid("c3d52a10-0000-4000-9000-000000000005"),
+                            IsActive = true,
+                            OccasionSlug = "",
+                            Poet = "سعدی",
+                            SortOrder = 5,
+                            Text = "بنی‌آدم اعضای یک پیکرند\nکه در آفرینش ز یک گوهرند"
+                        },
+                        new
+                        {
+                            Id = new Guid("c3d52a10-0000-4000-9000-000000000006"),
+                            IsActive = true,
+                            OccasionSlug = "",
+                            Poet = "مولوی",
+                            SortOrder = 6,
+                            Text = "عشق آن شعله است کاو چون برفروخت\nهر چه جز معشوق باقی جمله سوخت"
+                        },
+                        new
+                        {
+                            Id = new Guid("c3d52a10-0000-4000-9000-000000000007"),
+                            IsActive = true,
+                            OccasionSlug = "",
+                            Poet = "نظامی",
+                            SortOrder = 7,
+                            Text = "به نام آنکه جان را فکرت آموخت\nچراغ دل به نور جان برافروخت"
                         });
                 });
 #pragma warning restore 612, 618

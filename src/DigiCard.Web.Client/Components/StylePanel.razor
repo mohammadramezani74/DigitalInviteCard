@@ -1,0 +1,442 @@
+@using DigiCard.Contracts.Templates
+@using DigiCard.Contracts.Media
+@using DigiCard.Web.Client.Editor
+@using Microsoft.AspNetCore.Components.Forms
+@implements IDisposable
+@inject HttpClient Http
+
+@* The controls for whatever is selected. Everything here writes through EditorState, which writes
+   through CardLayout.FromElements - so the panel physically cannot set a value the server would
+   refuse. The colour picker is the clearest case: it can produce any of sixteen million colours,
+   and every one of them is an exact #rrggbb. *@
+
+@if (State.Selected is not { } element)
+{
+    <div class="ed-panel ed-panel-empty">
+        <p>روی بخشی از کارت بزنید تا تنظیماتش اینجا بیاید.</p>
+    </div>
+}
+else
+{
+    <div class="ed-panel">
+        <header class="ed-panel-head">
+            <h3>@Label(element.Role)</h3>
+            <div class="ed-panel-actions">
+                <button type="button" title="یک لایه بالاتر" @onclick="State.Raise">▲</button>
+                <button type="button" title="یک لایه پایین‌تر" @onclick="State.Lower">▼</button>
+                <button type="button" class="is-danger" title="حذف" @onclick="State.Remove">✕</button>
+            </div>
+        </header>
+
+        @* Names come as one block by default, because that keeps two long names wrapping
+           together instead of colliding. Splitting is one click away for when one name should
+           sit higher, larger or in a different colour than the other. *@
+        @if (element.Role == CardRole.Names)
+        {
+            <button type="button" class="ed-wide" @onclick="@(() => State.SplitNames())">
+                جدا کردن دو نام
+            </button>
+        }
+        else if (CardRole.SplitNameRoles.Contains(element.Role))
+        {
+            <button type="button" class="ed-wide" @onclick="@(() => State.MergeNames())">
+                برگرداندن به یک بخش
+            </button>
+        }
+
+        @* ---- typeface ---- *@
+        <fieldset>
+            <legend>قلم</legend>
+            <div class="ed-fonts">
+                @foreach (var (key, sample) in Fonts)
+                {
+                    <button type="button"
+                            class="ed-font-btn card-font-@key @(element.Style.Font == key ? "is-on" : "")"
+                            @onclick="@(() => State.UpdateStyle(s => s with { Font = key }))">
+                        @sample
+                    </button>
+                }
+            </div>
+        </fieldset>
+
+        @* ---- size ---- *@
+        <fieldset>
+            <legend>اندازه</legend>
+            <div class="ed-row">
+                <input type="range" min="1" max="20" step="0.2"
+                       value="@element.Style.FontSize"
+                       @onpointerdown="State.BeginGesture"
+                       @onpointerup="State.EndGesture"
+                       @oninput="@(e => SetFontSize(e.Value))" />
+                <span class="ed-num">@element.Style.FontSize.ToString("0.#")</span>
+            </div>
+        </fieldset>
+
+        @* ---- weight, only where the face has more than one ---- *@
+        @if (element.Style.Font == "body")
+        {
+            <fieldset>
+                <legend>ضخامت</legend>
+                <div class="ed-seg">
+                    @foreach (var (key, title) in Weights)
+                    {
+                        <button type="button" class="@(element.Style.Weight == key ? "is-on" : "")"
+                                @onclick="@(() => State.UpdateStyle(s => s with { Weight = key }))">@title</button>
+                    }
+                </div>
+            </fieldset>
+        }
+
+        @* ---- alignment ---- *@
+        <fieldset>
+            <legend>چینش</legend>
+            <div class="ed-seg">
+                @foreach (var (key, title) in Aligns)
+                {
+                    <button type="button" class="@(element.Style.Align == key ? "is-on" : "")"
+                            @onclick="@(() => State.UpdateStyle(s => s with { Align = key }))">@title</button>
+                }
+            </div>
+        </fieldset>
+
+        @* ---- colour: the card's own palette first, then anything ---- *@
+        <fieldset>
+            <legend>رنگ</legend>
+            <div class="ed-swatches">
+                @foreach (var (key, title) in Tones)
+                {
+                    <button type="button" title="@title"
+                            class="ed-swatch card-tone-@key @(element.Style.Color == key ? "is-on" : "")"
+                            @onclick="@(() => State.UpdateStyle(s => s with { Color = key }))"></button>
+                }
+
+                <label class="ed-swatch ed-swatch-custom @(element.Style.HasLiteralColor ? "is-on" : "")"
+                       title="رنگ دلخواه"
+                       style="@(element.Style.HasLiteralColor ? $"background:{element.Style.Color}" : "")">
+                    <input type="color" value="@CurrentHex(element)"
+                           @onchange="@(e => State.UpdateStyle(s => s with { Color = (string?)e.Value ?? "ink" }))" />
+                </label>
+            </div>
+            <p class="ed-hint">رنگ‌های سمت راست با طرح کارت عوض می‌شوند؛ رنگ دلخواه ثابت می‌ماند.</p>
+        </fieldset>
+
+        @* ---- per-role designs ---- *@
+        @if (CardRole.VariantsFor(element.Role) is { Count: > 0 } variants)
+        {
+            <fieldset>
+                <legend>طرح</legend>
+                <div class="ed-seg ed-seg-wrap">
+                    @foreach (var variant in variants)
+                    {
+                        <button type="button" class="@(element.Style.Variant == variant ? "is-on" : "")"
+                                @onclick="@(() => State.UpdateStyle(s => s with { Variant = variant }))">
+                            @VariantTitle(variant)
+                        </button>
+                    }
+                </div>
+            </fieldset>
+        }
+
+        @* ---- digits, for the roles that show numbers ---- *@
+        @if (element.Role is CardRole.Date or CardRole.Time)
+        {
+            <fieldset>
+                <legend>ارقام</legend>
+                <div class="ed-seg">
+                    <button type="button" class="@(element.Style.Digits == "fa" ? "is-on" : "")"
+                            @onclick="@(() => State.UpdateStyle(s => s with { Digits = "fa" }))">۱۲۳</button>
+                    <button type="button" class="@(element.Style.Digits == "en" ? "is-on" : "")"
+                            @onclick="@(() => State.UpdateStyle(s => s with { Digits = "en" }))">123</button>
+                </div>
+            </fieldset>
+        }
+
+        @* ---- the picture itself, then how it is framed ---- *@
+        @if (element.Role == CardRole.Photo)
+        {
+            <fieldset>
+                <legend>عکس</legend>
+                <InputFile OnChange="UploadAsync" accept="image/*" disabled="@uploading" />
+
+                @if (uploading)
+                {
+                    <p class="ed-hint">در حال آپلود…</p>
+                }
+                else if (uploadError is not null)
+                {
+                    <p class="ed-hint is-warned">@uploadError</p>
+                }
+                else if (element.Source is null)
+                {
+                    <p class="ed-hint">تا عکسی انتخاب نشده، جای آن روی کارت نشان داده می‌شود.</p>
+                }
+            </fieldset>
+
+            <fieldset>
+                <legend>نحوه قرارگیری</legend>
+                <div class="ed-seg">
+                    <button type="button" class="@(element.Style.Fit == "contain" ? "is-on" : "")"
+                            @onclick="@(() => State.UpdateStyle(s => s with { Fit = "contain" }))">کامل</button>
+                    <button type="button" class="@(element.Style.Fit == "cover" ? "is-on" : "")"
+                            @onclick="@(() => State.UpdateStyle(s => s with { Fit = "cover" }))">پرکردن کادر</button>
+                </div>
+                <p class="ed-hint">«پرکردن کادر» لبه‌های بیرون‌زده را می‌بُرد. برای عکس پرتره در کادر مربع، «کامل» را بزنید یا کادر را کشیده‌تر کنید.</p>
+            </fieldset>
+
+            @* Only when the frame is actually cropping. With «کامل» the whole picture is already
+               on screen and these two would do nothing visible, which is worse than not being
+               there. dir=ltr on the sliders is deliberate: the page is right-to-left, but these
+               control an image axis where 0 is the left edge, and a slider that runs the other
+               way to the thing it moves is unusable. *@
+            @if (element.Source is { Length: > 0 })
+            {
+                <fieldset>
+                    <legend>جای عکس در کادر</legend>
+                    <div class="ed-row">
+                        <span class="ed-tag">بزرگ‌نمایی</span>
+                        <input type="range" min="50" max="250" step="5" dir="ltr"
+                               value="@element.Style.Zoom"
+                               @onpointerdown="State.BeginGesture"
+                               @onpointerup="State.EndGesture"
+                               @oninput="@(e => SetZoom(e.Value))" />
+                        <span class="ed-num">@element.Style.Zoom.ToString("0")%</span>
+                    </div>
+                    <div class="ed-row">
+                        <span class="ed-tag">افقی</span>
+                        <input type="range" min="0" max="100" step="1" dir="ltr"
+                               value="@element.Style.FocusX"
+                               @onpointerdown="State.BeginGesture"
+                               @onpointerup="State.EndGesture"
+                               @oninput="@(e => SetFocusX(e.Value))" />
+                    </div>
+                    <div class="ed-row">
+                        <span class="ed-tag">عمودی</span>
+                        <input type="range" min="0" max="100" step="1" dir="ltr"
+                               value="@element.Style.FocusY"
+                               @onpointerdown="State.BeginGesture"
+                               @onpointerup="State.EndGesture"
+                               @oninput="@(e => SetFocusY(e.Value))" />
+                    </div>
+                    <div class="ed-seg ed-seg-wrap">
+                        <button type="button" @onclick="@(() => SetFocus(50, 22))">صورت بالا</button>
+                        <button type="button" @onclick="@(() => SetFocus(50, 50))">وسط</button>
+                        <button type="button" @onclick="@(() => SetFocus(50, 78))">پایین</button>
+                        <button type="button" @onclick="Reframe">از نو</button>
+                    </div>
+                    <p class="ed-hint">عکس داخل کادر جابه‌جا و کوچک و بزرگ می‌شود؛ خود کادر سر جایش می‌ماند. زیر ۱۰۰٪ کناره‌های کادر خالی می‌ماند.</p>
+                </fieldset>
+            }
+
+            <fieldset>
+                <legend>حاشیه</legend>
+                <div class="ed-seg ed-seg-wrap">
+                    @foreach (var (key, title) in FrameKinds)
+                    {
+                        <button type="button" class="@(element.Style.Frame == key ? "is-on" : "")"
+                                @onclick="@(() => State.UpdateStyle(s => s with { Frame = key }))">@title</button>
+                    }
+                </div>
+            </fieldset>
+
+            <fieldset>
+                <legend>محو شدن لبه</legend>
+                <div class="ed-row">
+                    <input type="range" min="0" max="80" step="1"
+                           value="@element.Style.Feather"
+                           @onpointerdown="State.BeginGesture"
+                           @onpointerup="State.EndGesture"
+                           @oninput="@(e => SetFeather(e.Value))" />
+                    <span class="ed-num">@element.Style.Feather.ToString("0")</span>
+                </div>
+            </fieldset>
+        }
+
+        @* ---- the numbers, for when dragging is not precise enough ---- *@
+        <fieldset>
+            <legend>دقیق</legend>
+            <div class="ed-grid2">
+                <label>چرخش
+                    <input type="number" min="-180" max="180" step="1" value="@element.Rotation"
+                           @onchange="@(e => SetNumber(e.Value, (el, v) => el with { Rotation = v }))" />
+                </label>
+                <label>عرض
+                    <input type="number" min="2" max="150" step="1" value="@element.W"
+                           @onchange="@(e => SetNumber(e.Value, (el, v) => el with { W = v }))" />
+                </label>
+                <label>فاصله خطوط
+                    <input type="number" min="0.8" max="4" step="0.1" value="@element.Style.LineHeight"
+                           @onchange="@(e => SetStyleNumber(e.Value, (s, v) => s with { LineHeight = v }))" />
+                </label>
+                <label>شفافیت
+                    <input type="number" min="0.05" max="1" step="0.05" value="@element.Style.Opacity"
+                           @onchange="@(e => SetStyleNumber(e.Value, (s, v) => s with { Opacity = v }))" />
+                </label>
+            </div>
+        </fieldset>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public EditorState State { get; set; } = default!;
+
+    private bool uploading;
+    private string? uploadError;
+
+    protected override void OnInitialized() => State.Changed += StateHasChanged;
+
+    /// <summary>
+    /// The card stores which image it uses, never a width - the renderer decides that. So all
+    /// that lands in the element is the media's own address.
+    /// </summary>
+    private async Task UploadAsync(InputFileChangeEventArgs e)
+    {
+        uploading = true;
+        uploadError = null;
+
+        var result = await new MediaUploader(Http).UploadAsync(e.File, MediaKind.Photo);
+
+        uploading = false;
+
+        if (result.Media is null)
+        {
+            uploadError = result.Error;
+            return;
+        }
+
+        // The frame takes the picture's own proportions, so nothing is cropped unless the user
+        // later reshapes it. Without this a portrait photo lands in whatever box happened to be
+        // there and loses the top and bottom of itself - which on a wedding photo is the faces.
+        var media = result.Media;
+
+        // A portrait is taller than the frame it lands in, and cover throws away the top and the
+        // bottom equally. Faces sit in the upper third of a photograph almost without exception,
+        // so the crop starts there rather than dead centre; the sliders move it from there.
+        var portrait = media.Height > media.Width;
+
+        State.Update(el =>
+        {
+            if (el.Style.Variant == "circle" || media.Width <= 0)
+                return el with
+                {
+                    Source = media.Source,
+                    Style = portrait ? el.Style with { FocusY = 30 } : el.Style,
+                };
+
+            // A height in percent of the card, from a width in percent of the card.
+            var height = el.W * (media.Height / (double)media.Width) * CardLayout.CardAspect;
+
+            return el with { Source = media.Source, H = Math.Min(height, 90) };
+        });
+    }
+
+    public void Dispose() => State.Changed -= StateHasChanged;
+
+    private static readonly (string Key, string Sample)[] Fonts =
+    [
+        ("body", "وزیرمتن"),
+        ("display", "لاله‌زار"),
+        ("nastaliq", "نستعلیق"),
+    ];
+
+    private static readonly (string Key, string Title)[] Weights =
+    [
+        ("normal", "عادی"), ("medium", "نیمه"), ("bold", "ضخیم"),
+    ];
+
+    private static readonly (string Key, string Title)[] Aligns =
+    [
+        ("right", "راست"), ("center", "وسط"), ("left", "چپ"),
+    ];
+
+    private static readonly (string Key, string Title)[] Tones =
+    [
+        ("ink", "رنگ متن کارت"),
+        ("accent", "رنگ اصلی کارت"),
+        ("muted", "محو"),
+        ("paper", "رنگ کاغذ"),
+    ];
+
+    private static readonly (string Key, string Title)[] FrameKinds =
+    [
+        ("none", "بدون"), ("thin", "نازک"), ("double", "دوخطی"), ("gold", "طلایی"),
+    ];
+
+    /// <summary>The colour input needs a literal even when the element is on a palette token.</summary>
+    private static string CurrentHex(CardElement element) =>
+        element.Style.HasLiteralColor ? element.Style.Color : "#7c764f";
+
+    private void SetFontSize(object? value) =>
+        SetStyleNumber(value, (s, v) => s with { FontSize = v });
+
+    private void SetFeather(object? value) =>
+        SetStyleNumber(value, (s, v) => s with { Feather = v });
+
+    private void SetFocusX(object? value) =>
+        SetStyleNumber(value, (s, v) => s with { FocusX = v });
+
+    private void SetFocusY(object? value) =>
+        SetStyleNumber(value, (s, v) => s with { FocusY = v });
+
+    private void SetZoom(object? value) =>
+        SetStyleNumber(value, (s, v) => s with { Zoom = v });
+
+    /// <summary>The presets. One click covers what almost everyone wants from the two sliders.</summary>
+    private void SetFocus(double x, double y) =>
+        State.UpdateStyle(s => s with { FocusX = x, FocusY = y });
+
+    /// <summary>Back to an untouched picture, for when the fiddling has gone somewhere strange.</summary>
+    private void Reframe() =>
+        State.UpdateStyle(s => s with { FocusX = 50, FocusY = 50, Zoom = 100 });
+
+    // Parsed invariantly: the browser sends "3.4" whatever the page language is, and a Persian
+    // culture would refuse to read that.
+    private void SetNumber(object? value, Func<CardElement, double, CardElement> apply)
+    {
+        if (TryRead(value, out var number)) State.Update(el => apply(el, number));
+    }
+
+    private void SetStyleNumber(object? value, Func<CardElementStyle, double, CardElementStyle> apply)
+    {
+        if (TryRead(value, out var number)) State.UpdateStyle(s => apply(s, number));
+    }
+
+    private static bool TryRead(object? value, out double number) =>
+        double.TryParse(value as string, System.Globalization.NumberStyles.Float,
+            System.Globalization.CultureInfo.InvariantCulture, out number);
+
+    private static string Label(string role) => role switch
+    {
+        CardRole.Names => "نام‌ها",
+        CardRole.Name1 => "نام اول",
+        CardRole.Name2 => "نام دوم",
+        CardRole.Joiner => "کلمه رابط",
+        CardRole.Kicker => "خط بالا",
+        CardRole.Message => "متن دعوت",
+        CardRole.Poem => "شعر",
+        CardRole.Date => "تاریخ",
+        CardRole.Time => "ساعت",
+        CardRole.Address => "نشانی",
+        CardRole.Photo => "عکس",
+        CardRole.Divider => "خط تزئینی",
+        _ => "متن",
+    };
+
+    private static string VariantTitle(string variant) => variant switch
+    {
+        "plain" => "ساده",
+        "weekday" => "با روز هفته",
+        "numeric" => "عددی",
+        "circle" => "دایره",
+        "boxed" => "کادر",
+        "stacked" => "طبقاتی",
+        "pin" => "با نشان مکان",
+        "rule" => "خط",
+        "dots" => "لوزی",
+        "floral" => "گل",
+        "rect" => "مستطیل",
+        "rounded" => "گوشه‌گرد",
+        "oval" => "بیضی",
+        "arch" => "طاقی",
+        _ => variant,
+    };
+}

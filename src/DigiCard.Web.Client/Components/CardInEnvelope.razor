@@ -1,0 +1,34 @@
+@using DigiCard.Contracts.Templates
+
+@* The gallery presentation: a card laid over an opened envelope.
+
+   Order matters: the flap stands open above the envelope, the body and pocket sit behind,
+   and the card lies in front of all of it. Purely static - the listing pages render eleven
+   of these, so they use the small envelope layers (9-14 KB each) and nothing animates. *@
+
+<div class="tile-scene">
+    @* The flap folded back and standing open. Derived from the lining by mirroring it about
+       the hinge, so it matches the envelope exactly. *@
+    <img class="tile-flap" src="card-art/envelope/envelope-flap-open-sm.webp"
+         alt="" loading="lazy" decoding="async" />
+
+    <img class="tile-back" src="card-art/envelope/envelope-back-sm.webp"
+         alt="" loading="lazy" decoding="async" />
+
+    <img class="tile-front" src="card-art/envelope/envelope-front-sm.webp"
+         alt="" loading="lazy" decoding="async" />
+
+    <div class="tile-card">
+        <CardPreview Template="Template"
+                     BrideName="@BrideName"
+                     GroomName="@GroomName"
+                     Message="@Message" />
+    </div>
+</div>
+
+@code {
+    [Parameter] public TemplateSummary? Template { get; set; }
+    [Parameter] public string BrideName { get; set; } = "";
+    [Parameter] public string GroomName { get; set; } = "";
+    [Parameter] public string Message { get; set; } = "";
+}

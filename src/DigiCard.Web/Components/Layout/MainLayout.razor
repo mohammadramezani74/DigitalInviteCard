@@ -1,5 +1,71 @@
 @inherits LayoutComponentBase
-<header class="site-header"><a class="brand" href="/">دیجی‌کارت</a><nav aria-label="ناوبری اصلی"><a href="/templates">قالب‌ها</a><a href="/studio">ساخت کارت</a><a href="/Account/Manage">حساب من</a></nav></header>
-<main class="page-shell">@Body</main>
-<footer class="site-footer">برای لحظه‌هایی که ماندگار می‌شوند.</footer>
-<div id="blazor-error-ui">خطایی رخ داد. <a href="" class="reload">بارگذاری دوباره</a><a class="dismiss">×</a></div>
+
+<a class="skip-link" href="#main">رفتن به محتوای اصلی</a>
+
+<header class="site-header">
+    <a class="brand" href="/">
+        <span class="brand-mark" aria-hidden="true">❖</span>
+        <span>دیجی‌کارت</span>
+    </a>
+
+    <nav class="site-nav" aria-label="ناوبری اصلی">
+        <a href="/templates">قالب‌ها</a>
+        <a href="/templates/category/wedding">عروسی</a>
+        <a href="/templates/category/aghd">عقد</a>
+        <a href="/studio">ساخت کارت</a>
+    </nav>
+
+    <div class="site-actions">
+        <AuthorizeView>
+            <Authorized>
+                <a class="btn-quiet" href="/my-cards">کارت‌های من</a>
+                <a class="btn-quiet" href="/Account/Manage">حساب من</a>
+            </Authorized>
+            <NotAuthorized>
+                <a class="btn-quiet" href="/Account/Login">ورود</a>
+                <a class="btn-primary btn-small" href="/Account/Register">ثبت‌نام</a>
+            </NotAuthorized>
+        </AuthorizeView>
+    </div>
+</header>
+
+<main class="page-shell" id="main">@Body</main>
+
+<footer class="site-footer">
+    <div class="footer-inner">
+        <div class="footer-brand">
+            <span class="brand-mark" aria-hidden="true">❖</span>
+            <p>دیجی‌کارت — کارت دعوت دیجیتال فارسی.</p>
+        </div>
+
+        <nav aria-label="دسته‌بندی مراسم">
+            <h2>مراسم‌ها</h2>
+            <ul>
+                <li><a href="/templates/category/wedding">عروسی</a></li>
+                <li><a href="/templates/category/aghd">عقد</a></li>
+                <li><a href="/templates/category/engagement">نامزدی</a></li>
+                <li><a href="/templates/category/baleboron">بله‌برون</a></li>
+                <li><a href="/templates/category/hanabandan">حنابندان</a></li>
+                <li><a href="/templates/category/anniversary">سالگرد ازدواج</a></li>
+            </ul>
+        </nav>
+
+        <nav aria-label="پیوندهای سایت">
+            <h2>دیجی‌کارت</h2>
+            <ul>
+                <li><a href="/templates">همه قالب‌ها</a></li>
+                <li><a href="/studio">ساخت کارت</a></li>
+                <li><a href="/Account/Login">ورود</a></li>
+                <li><a href="/Account/Register">ثبت‌نام</a></li>
+            </ul>
+        </nav>
+    </div>
+
+    <p class="footer-legal">برای لحظه‌هایی که ماندگار می‌شوند.</p>
+</footer>
+
+<div id="blazor-error-ui">
+    خطایی رخ داد.
+    <a href="" class="reload">بارگذاری دوباره</a>
+    <a class="dismiss">×</a>
+</div>

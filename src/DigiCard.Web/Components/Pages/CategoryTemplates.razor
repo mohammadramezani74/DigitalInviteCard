@@ -1,0 +1,129 @@
+@page "/templates/category/{CategorySlug}"
+@using DigiCard.Contracts.Templates
+@using DigiCard.Web.Client.Components
+@inject ITemplateCatalog Catalog
+@inject IOccasionCatalog Occasions
+@inject NavigationManager Navigation
+
+@* A hidden occasion is treated exactly like a missing one. It is not linked anywhere and not in
+   the sitemap, but without this it still answers on a direct URL with a real title and an empty
+   body - a thin page waiting to be indexed the day someone shares the link. The admin panel will
+   reach hidden occasions through its own route, not this one. *@
+@if (occasion is null || !occasion.IsActive)
+{
+    <SeoHead Title="دسته‌بندی پیدا نشد | دیجی‌کارت" NoIndex="true" />
+
+    <header class="page-head">
+        <h1>این دسته‌بندی وجود ندارد</h1>
+        <p>ممکن است نشانی را اشتباه وارد کرده باشید.</p>
+    </header>
+    <p><a class="btn-primary" href="/templates">دیدن همه قالب‌ها</a></p>
+}
+else
+{
+    <SeoHead Title="@($"کارت {occasion.Title} | دیجی‌کارت")"
+             Description="@($"قالب‌های کارت دیجیتال فارسی برای {occasion.Tagline}. طرح را انتخاب کنید، متن فارسی را بنویسید و پیش‌نمایش کارت را همان لحظه ببینید.")" />
+
+    <JsonLd Data="Structured" />
+
+    <nav class="breadcrumb" aria-label="مسیر صفحه">
+        <ol>
+            <li><a href="/">خانه</a></li>
+            <li><a href="/templates">قالب‌ها</a></li>
+            <li aria-current="page">@occasion.Title</li>
+        </ol>
+    </nav>
+
+    <header class="page-head">
+        <h1>کارت @occasion.Title</h1>
+        <p>@occasion.Tagline</p>
+    </header>
+
+    <nav class="chip-row" aria-label="دسته‌بندی مراسم">
+        <a class="chip" href="/templates">همه</a>
+        @foreach (var item in occasions)
+        {
+            if (item.Slug == occasion.Slug)
+            {
+                <span class="chip chip-active" aria-current="page">@item.Title</span>
+            }
+            else
+            {
+                <a class="chip" href="@($"/templates/category/{item.Slug}")">@item.Title</a>
+            }
+        }
+    </nav>
+
+    @if (templates.Count == 0)
+    {
+        <p class="empty-note" role="status">
+            هنوز قالبی برای این دسته آماده نشده است.
+            <a href="/templates">همه قالب‌ها را ببینید</a>.
+        </p>
+    }
+    else
+    {
+        <ul class="template-grid">
+            @foreach (var template in templates)
+            {
+                <li>
+                    <a class="template-tile" href="@($"/templates/{template.Slug}")">
+                        <CardInEnvelope Template="template"
+                                     BrideName="عروس"
+                                     GroomName="داماد"
+                                     Message="با حضور شما شادی ما کامل می‌شود" />
+                        <h3>@template.Name</h3>
+                        <p class="template-meta">@TemplateDisplay.FamilyTitle(template.Family)</p>
+                    </a>
+                </li>
+            }
+        </ul>
+    }
+}
+
+@code {
+    [Parameter] public string CategorySlug { get; set; } = "";
+
+    private OccasionSummary? occasion;
+    private IReadOnlyList<OccasionSummary> occasions = [];
+    private IReadOnlyList<TemplateSummary> templates = [];
+
+    /// <summary>One occasion's shelf of the catalogue, listed for a crawler.</summary>
+    private object Structured
+    {
+        get
+        {
+            var origin = Navigation.BaseUri.TrimEnd('/');
+
+            return new Dictionary<string, object?>
+            {
+                ["@context"] = "https://schema.org",
+                ["@type"] = "CollectionPage",
+                ["name"] = $"قالب‌های کارت {occasion?.Title}",
+                ["inLanguage"] = "fa-IR",
+                ["url"] = $"{origin}/templates/category/{CategorySlug}",
+                ["mainEntity"] = new Dictionary<string, object?>
+                {
+                    ["@type"] = "ItemList",
+                    ["numberOfItems"] = templates.Count,
+                    ["itemListElement"] = templates.Select((t, i) => new Dictionary<string, object?>
+                    {
+                        ["@type"] = "ListItem",
+                        ["position"] = i + 1,
+                        ["name"] = t.Name,
+                        ["url"] = $"{origin}/templates/{t.Slug}",
+                    }).ToArray(),
+                },
+            };
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        occasion = await Occasions.FindAsync(CategorySlug, CancellationToken.None);
+        occasions = await Occasions.ListAsync(CancellationToken.None);
+        templates = occasion is null || !occasion.IsActive
+            ? []
+            : await Catalog.ListByCategoryAsync(occasion.Slug, CancellationToken.None);
+    }
+}

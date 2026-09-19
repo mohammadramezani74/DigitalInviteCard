@@ -1,0 +1,58 @@
+@* Per-page SEO head. Server-rendered pages only, so the tags are in the HTML the crawler
+   receives rather than injected later by the browser. *@
+@inject Microsoft.Extensions.Configuration.IConfiguration Configuration
+@inject NavigationManager Navigation
+
+<PageTitle>@Title</PageTitle>
+<HeadContent>
+    @if (!string.IsNullOrWhiteSpace(Description))
+    {
+        <meta name="description" content="@Description" />
+    }
+
+    @if (NoIndex)
+    {
+        @* Private pages are kept out of the index here. robots.txt is not a privacy
+           control; the authorization check on the endpoint is what protects the data. *@
+        <meta name="robots" content="noindex, nofollow" />
+    }
+    else if (Canonical is not null)
+    {
+        <link rel="canonical" href="@Canonical" />
+        <meta property="og:url" content="@Canonical" />
+    }
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="دیجی‌کارت" />
+    <meta property="og:title" content="@Title" />
+    @if (!string.IsNullOrWhiteSpace(Description))
+    {
+        <meta property="og:description" content="@Description" />
+    }
+    <meta property="og:locale" content="fa_IR" />
+</HeadContent>
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = "دیجی‌کارت";
+    [Parameter] public string? Description { get; set; }
+    [Parameter] public bool NoIndex { get; set; }
+
+    /// <summary>
+    /// Built from the configured public origin. The domain is never guessed: with no
+    /// Seo:BaseUrl configured (development, for instance) no canonical tag is emitted at all,
+    /// which is safer than publishing a wrong one.
+    /// </summary>
+    private string? Canonical
+    {
+        get
+        {
+            var baseUrl = Configuration["Seo:BaseUrl"];
+            if (string.IsNullOrWhiteSpace(baseUrl)) return null;
+
+            var relative = Navigation.ToBaseRelativePath(Navigation.Uri);
+            var path = relative.Split('?')[0].Split('#')[0].Trim('/');
+            var origin = baseUrl.TrimEnd('/');
+            return path.Length == 0 ? origin : $"{origin}/{path}";
+        }
+    }
+}

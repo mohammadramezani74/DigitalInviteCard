@@ -1,8 +1,287 @@
 @page "/"
-<PageTitle>دیجی‌کارت | دعوتی به زیبایی شروع شما</PageTitle>
-<section class="hero">
-    <span class="eyebrow">دیجی‌کارت</span><h1>یک شروع زیبا،<br />یک دعوت ماندگار.</h1>
-    <p>دعوت‌نامه‌تان را با سلیقه خودتان بسازید.</p>
-    <a class="primary-link" href="/templates">انتخاب کارت دعوت</a>
+@using DigiCard.Contracts.Templates
+@using DigiCard.Web.Client.Components
+@using Microsoft.Extensions.Logging
+@inject ITemplateCatalog Catalog
+@inject IOccasionCatalog Occasions
+@inject ILogger<Home> Logger
+@inject NavigationManager Navigation
+
+<SeoHead Title="دیجی‌کارت | کارت دعوت عروسی دیجیتال فارسی"
+         Description="کارت دعوت دیجیتال فارسی برای عروسی، عقد، نامزدی، بله‌برون، حنابندان و سالگرد ازدواج. قالب را انتخاب کنید، متن را به سلیقه خودتان بنویسید و پیش‌نمایش را همان لحظه ببینید." />
+
+<JsonLd Data="Structured" />
+
+<section class="hero hero-split">
+    @* A decorative band behind the opening only. It is full-bleed, so it escapes the page
+       shell, and it fades out at the bottom into the plain page - everything below the fold
+       stays clean. Purely ornamental, hence aria-hidden. *@
+    <div class="hero-backdrop" aria-hidden="true"></div>
+
+    <div class="hero-copy">
+        <p class="hero-eyebrow">کارت دعوت دیجیتال</p>
+        <h1>دعوت‌نامه‌ای به زیبایی<br />شروع شما</h1>
+        <p class="hero-lead">
+            قالب فارسی را انتخاب کنید، نام‌ها و متن را بنویسید و کارت را همان لحظه ببینید.
+            بدون نصب برنامه، روی موبایل مهمان‌ها.
+        </p>
+        <div class="hero-actions">
+            <a class="btn-primary" href="/templates">دیدن قالب‌ها</a>
+            <a class="btn-quiet" href="/studio">شروع ساخت کارت</a>
+        </div>
+        <p class="hero-hint">پاکت را باز کنید ↖</p>
+    </div>
+
+    @* The product explains itself faster than any paragraph can: the visitor opens a real
+       envelope in the first seconds. Same component as the template page. *@
+    <div class="hero-envelope">
+        @if (hero is not null)
+        {
+            <EnvelopeCard Template="hero"
+                          BrideName="عروس"
+                          GroomName="داماد"
+                          Message="با حضور شما شادی ما کامل می‌شود" />
+        }
+    </div>
 </section>
-<div class="feature-grid"><article><h2>شخصی و صمیمی</h2><p>نام‌ها و متن خودتان، در یک ترکیب هماهنگ.</p></article><article><h2>ساده و روشن</h2><p>پیش‌نمایش زنده، هم‌زمان با نوشتن.</p></article></div>
+
+<section class="section" aria-labelledby="categories-heading">
+    <header class="section-head">
+        <h2 id="categories-heading">برای کدام مراسم؟</h2>
+        <p>هر مراسم قالب و لحن خودش را دارد.</p>
+    </header>
+
+    <ul class="category-grid">
+        @foreach (var occasion in occasions)
+        {
+            <li>
+                <a class="category-card" href="@($"/templates/category/{occasion.Slug}")">
+                    <span class="category-mark" aria-hidden="true"><CategoryIcon Slug="@occasion.Icon" /></span>
+                    <span class="category-title">@occasion.Title</span>
+                    <span class="category-tagline">@occasion.Tagline</span>
+                </a>
+            </li>
+        }
+    </ul>
+</section>
+
+<section class="section" aria-labelledby="featured-heading">
+    <header class="section-head">
+        <h2 id="featured-heading">نمونه قالب‌ها</h2>
+        <p>هر قالب طرح، رنگ و چیدمان خودش را دارد — نه یک کارت با چند رنگ.</p>
+    </header>
+
+    @if (featured.Count == 0)
+    {
+        <p class="empty-note" role="status">
+            نمونه‌ها همین حالا در دسترس نیستند.
+            <a href="/templates">گالری قالب‌ها را ببینید</a>.
+        </p>
+    }
+    else
+    {
+        <ul class="template-grid">
+            @foreach (var template in featured)
+            {
+                <li>
+                    <a class="template-tile" href="@($"/templates/{template.Slug}")">
+                        <CardInEnvelope Template="template"
+                                     BrideName="عروس"
+                                     GroomName="داماد"
+                                     Message="با حضور شما شادی ما کامل می‌شود" />
+                        <h3>@template.Name</h3>
+                        <p class="template-meta">@OccasionTitle(template.Category)</p>
+                    </a>
+                </li>
+            }
+        </ul>
+
+        <p class="section-more"><a href="/templates">دیدن همه قالب‌ها</a></p>
+    }
+</section>
+
+<section class="section" aria-labelledby="why-heading">
+    <header class="section-head">
+        <h2 id="why-heading">چرا کارت دیجیتال؟</h2>
+        <p>مقایسه با کارت چاپی، بدون اغراق.</p>
+    </header>
+
+    <div class="compare">
+        <article>
+            <h3>تغییر لحظه آخر</h3>
+            <p>ساعت مراسم عوض شد؟ متن کارت را ویرایش می‌کنید. کارت چاپی را باید دوباره چاپ کنید.</p>
+        </article>
+        <article>
+            <h3>مهمان دور</h3>
+            <p>فرستادن کارت برای شهر یا کشور دیگر، همان‌قدر ساده است که برای همسایه.</p>
+        </article>
+        <article>
+            <h3>بدون کاغذ</h3>
+            <p>نه چاپ، نه پیک، نه کارت‌های اضافه‌ای که ته کشو می‌مانند.</p>
+        </article>
+    </div>
+</section>
+
+<section class="section" aria-labelledby="steps-heading">
+    <header class="section-head">
+        <h2 id="steps-heading">در سه مرحله</h2>
+    </header>
+
+    <ol class="step-list">
+        <li>
+            <span class="step-number" aria-hidden="true">۱</span>
+            <h3>انتخاب طرح</h3>
+            <p>از میان قالب‌های دسته‌بندی‌شده، طرحی را انتخاب کنید که به مراسم شما می‌خورد.</p>
+        </li>
+        <li>
+            <span class="step-number" aria-hidden="true">۲</span>
+            <h3>شخصی‌سازی</h3>
+            <p>نام عروس و داماد و متن دعوت را بنویسید و نتیجه را هم‌زمان ببینید.</p>
+        </li>
+        <li class="step-upcoming">
+            <span class="step-number" aria-hidden="true">۳</span>
+            <h3>اشتراک‌گذاری <span class="badge">در دست ساخت</span></h3>
+            <p>انتشار کارت با لینک اختصاصی هنوز آماده نیست. فعلاً کارت شما به‌صورت پیش‌نویس خصوصی ذخیره می‌شود.</p>
+        </li>
+    </ol>
+</section>
+
+<section class="section" aria-labelledby="now-heading">
+    <header class="section-head">
+        <h2 id="now-heading">همین حالا چه کاری می‌شود کرد؟</h2>
+        <p>فهرست زیر فقط چیزهایی است که امروز کار می‌کنند.</p>
+    </header>
+
+    <div class="feature-grid">
+        <article class="feature-card">
+            <h3>قالب فارسی دسته‌بندی‌شده</h3>
+            <p>قالب‌ها در شش دسته مراسم و چهار خانواده طراحی چیده شده‌اند.</p>
+        </article>
+        <article class="feature-card">
+            <h3>ویرایش زنده</h3>
+            <p>هر حرفی که می‌نویسید بلافاصله روی کارت دیده می‌شود؛ بدون رفت‌وبرگشت با سرور.</p>
+        </article>
+        <article class="feature-card">
+            <h3>پاکت متحرک</h3>
+            <p>کارت داخل یک پاکت مهروموم‌شده است و با لمس مهمان باز می‌شود.</p>
+        </article>
+        <article class="feature-card">
+            <h3>پیش‌نویس خصوصی</h3>
+            <p>کارت شما فقط با حساب خودتان قابل دیدن است. داشتن لینک برای دیگران کافی نیست.</p>
+        </article>
+    </div>
+
+    <div class="roadmap">
+        <h3>در دست ساخت</h3>
+        <p>
+            موسیقی کارت، آپلود و برش عکس، انتشار کارت با لینک اختصاصی،
+            مدیریت مهمان‌ها و ثبت پاسخ حضور. این‌ها هنوز آماده نیستند و اینجا فقط برای
+            روشن‌بودن مسیر نوشته شده‌اند.
+        </p>
+    </div>
+</section>
+
+<section class="section" aria-labelledby="faq-heading">
+    <header class="section-head">
+        <h2 id="faq-heading">پرسش‌های متداول</h2>
+    </header>
+
+    <div class="faq">
+        <details>
+            <summary>برای ساخت کارت باید حساب بسازم؟</summary>
+            <p>بله. کارت شما به حساب‌تان گره می‌خورد تا بعداً بتوانید همان پیش‌نویس را باز کنید و کس دیگری به آن دسترسی نداشته باشد.</p>
+        </details>
+        <details>
+            <summary>مهمان‌ها برای دیدن کارت باید ثبت‌نام کنند؟</summary>
+            <p>خیر. البته انتشار کارت برای مهمان‌ها هنوز آماده نشده است؛ در حال حاضر کارت فقط به‌صورت پیش‌نویس خصوصی برای خودتان قابل مشاهده است.</p>
+        </details>
+        <details>
+            <summary>می‌توانم عکس خودمان را روی کارت بگذارم؟</summary>
+            <p>هنوز نه. قالب‌های عکس‌محور جای عکس را نشان می‌دهند، ولی آپلود عکس در مرحله بعدی توسعه اضافه می‌شود.</p>
+        </details>
+        <details>
+            <summary>قیمت چقدر است؟</summary>
+            <p>هنوز قیمت‌گذاری نشده است. تا زمانی که تصمیم نهایی گرفته نشود، عددی اعلام نمی‌کنیم.</p>
+        </details>
+    </div>
+</section>
+
+@code {
+    /// <summary>
+    /// Who the site is, once, on the page Google treats as the site itself. WebSite carries the
+    /// name shown under the brand result; Organization is what a logo and social links attach to
+    /// later. No SearchAction is declared: the site has no search box, and claiming one that does
+    /// not exist is the kind of thing that gets structured data ignored altogether.
+    /// </summary>
+    private object Structured
+    {
+        get
+        {
+            var origin = Navigation.BaseUri.TrimEnd('/');
+
+            return new Dictionary<string, object?>
+            {
+                ["@context"] = "https://schema.org",
+                ["@graph"] = new object[]
+                {
+                    new Dictionary<string, object?>
+                    {
+                        ["@type"] = "WebSite",
+                        ["@id"] = $"{origin}/#website",
+                        ["name"] = "دیجی‌کارت",
+                        ["description"] = "کارت دعوت دیجیتال فارسی برای عروسی، عقد، نامزدی و سالگرد ازدواج.",
+                        ["inLanguage"] = "fa-IR",
+                        ["url"] = $"{origin}/",
+                        ["publisher"] = new Dictionary<string, object?> { ["@id"] = $"{origin}/#organization" },
+                    },
+                    new Dictionary<string, object?>
+                    {
+                        ["@type"] = "Organization",
+                        ["@id"] = $"{origin}/#organization",
+                        ["name"] = "دیجی‌کارت",
+                        ["url"] = $"{origin}/",
+                    },
+                },
+            };
+        }
+    }
+
+    private IReadOnlyList<TemplateSummary> featured = [];
+    private IReadOnlyList<OccasionSummary> occasions = [];
+    private TemplateSummary? hero;
+
+    private string OccasionTitle(string slug) =>
+        occasions.FirstOrDefault(o => o.Slug == slug)?.Title ?? slug;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // The home page is the public entry point and must still render when the catalog is
+        // unreachable: the hero, the categories, the steps and the FAQ are all static, and only
+        // this one strip needs the database. A failure here degrades the section, never the page.
+        // Every other route in the gallery exists to show catalog data, so those are left to fail
+        // loudly instead.
+        try
+        {
+            occasions = await Occasions.ListAsync(CancellationToken.None);
+            var all = await Catalog.ListAsync(CancellationToken.None);
+
+            // Two per design family, so the strip shows real variety rather than six
+            // versions of the same look.
+            featured = all.GroupBy(t => t.Family).SelectMany(g => g.Take(2)).Take(6).ToList();
+
+            // The envelope needs one real template; prefer the painted rose card.
+            hero = all.FirstOrDefault(t => t.Slug == "golab-abrang")
+                ?? all.FirstOrDefault(t => !string.IsNullOrWhiteSpace(t.Artwork))
+                ?? all.FirstOrDefault();
+        }
+        catch (Exception exception)
+        {
+            // Deliberately broad: a database outage surfaces as any of several provider and
+            // EF exception types, and none of them justify a 500 on the marketing page.
+            Logger.LogWarning(exception, "Template catalog unavailable; rendering the home page without featured templates.");
+            featured = [];
+            occasions = [];
+            hero = null;
+        }
+    }
+}

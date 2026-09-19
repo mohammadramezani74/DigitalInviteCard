@@ -1,0 +1,98 @@
+@using DigiCard.Contracts.Templates
+
+@* A sealed envelope that turns, opens and releases the card.
+
+   Three steps, each its own deliberate action:
+     1. the envelope lies address-side up; a tap turns it over
+     2. the wax seal is now facing you; tapping the seal opens the flap and the card rises
+     3. tapping the card brings it forward as a full-screen panel
+
+   The envelope is five painted layers in one shared 3D space. Depth comes from translateZ,
+   not z-index: inside a preserve-3d context z-index is unreliable, while translateZ is what
+   the browser actually uses to decide occlusion.
+
+   Step 3 renders a SECOND copy of the card outside the stage. It has to live outside,
+   because both `perspective` and `container-type` make an element a containing block for
+   fixed-position descendants - a card inside the scene could never escape it and cover the
+   page. The markup is cheap and the artwork is already cached, so the copy costs nothing
+   the visitor can feel.
+
+   Three hidden checkboxes drive all of it: no JavaScript, no interactive render mode. *@
+
+<div class="env-root">
+    <input type="checkbox" id="@TurnId" class="env-switch env-switch-turn" />
+    <input type="checkbox" id="@OpenId" class="env-switch env-switch-open" />
+    <input type="checkbox" id="@ZoomId" class="env-switch env-switch-zoom" />
+
+    <div class="env-stage">
+        <div class="env-scene">
+            <div class="env-stack">
+                @* The address side. Its own 180° turn cancels the stack's, so it reads
+                   correctly before the turn and hides itself once the envelope comes round. *@
+                <img class="env-layer env-address" src="card-art/envelope/envelope-address-md.webp"
+                     alt="" loading="lazy" decoding="async" />
+
+                <img class="env-layer env-back" src="card-art/envelope/envelope-back-md.webp"
+                     alt="" loading="lazy" decoding="async" />
+
+                <img class="env-layer env-lining" src="card-art/envelope/envelope-flap-lining-md.webp"
+                     alt="" loading="lazy" decoding="async" />
+
+                @* Lying sideways inside the envelope, because a portrait card only fits a
+                   landscape envelope on its side. It turns upright on the way out. *@
+                <div class="env-card">
+                    <div class="env-card-inner">
+                        <CardPreview Template="Template"
+                                     BrideName="@BrideName"
+                                     GroomName="@GroomName"
+                                     Message="@Message" />
+                        <span class="env-sheen" aria-hidden="true"></span>
+                    </div>
+                </div>
+
+                <img class="env-layer env-front" src="card-art/envelope/envelope-front-md.webp"
+                     alt="" loading="lazy" decoding="async" />
+
+                <img class="env-layer env-flap" src="card-art/envelope/envelope-flap-md.webp"
+                     alt="" loading="lazy" decoding="async" />
+            </div>
+
+            @* Step 1: the whole envelope is the target. No caption - the envelope breathes
+               gently on its own, which reads as "touch me" without putting a label on it. *@
+            <label class="env-hit-turn" for="@TurnId" aria-label="برگرداندن پاکت"></label>
+
+            @* Step 2: only the seal itself, sitting exactly where the artwork paints it. *@
+            <label class="env-hit-seal" for="@OpenId" aria-label="بازکردن مهر">
+                <span class="env-cue-ring" aria-hidden="true"></span>
+            </label>
+
+            <label class="env-hit-card" for="@ZoomId" aria-label="دیدن کارت در اندازه بزرگ"></label>
+        </div>
+    </div>
+
+    @* Step 3, outside the stage so it can cover the page. *@
+    <label class="env-backdrop" for="@ZoomId" aria-label="بستن"></label>
+
+    <div class="env-popup" role="dialog" aria-label="کارت دعوت">
+        <div class="env-popup-card">
+            <CardPreview Template="Template"
+                         BrideName="@BrideName"
+                         GroomName="@GroomName"
+                         Message="@Message" />
+        </div>
+        <label class="env-popup-close" for="@ZoomId">بستن</label>
+    </div>
+</div>
+
+@code {
+    [Parameter] public TemplateSummary? Template { get; set; }
+    [Parameter] public string BrideName { get; set; } = "";
+    [Parameter] public string GroomName { get; set; } = "";
+    [Parameter] public string Message { get; set; } = "";
+
+    // Unique per instance, so several envelopes on one page never share a checkbox.
+    private readonly string instance = Guid.NewGuid().ToString("N")[..10];
+    private string TurnId => $"env-turn-{instance}";
+    private string OpenId => $"env-open-{instance}";
+    private string ZoomId => $"env-zoom-{instance}";
+}

@@ -26,11 +26,16 @@ internal static class Endpoint
                 .GroupBy(e => e.m).ToDictionary(g => g.Key, g => g.Select(e => e.Item2).ToArray()));
         var template = await templates.FindAsync(request.TemplateId, ct);
         if (template is null) return Results.ValidationProblem(new Dictionary<string, string[]> { ["TemplateId"] = ["قالب معتبر انتخاب کنید."] });
+        // The editor's arrangement wins; a client that sends none falls back to the template's.
+        var elements = string.IsNullOrWhiteSpace(request.Elements) ? template.Elements : request.Elements;
+
         var draft = InvitationDraft.Create(owner, request.Title, request.BrideName, request.GroomName,
-            request.Message, template.Id, template.Version, template.Accent, clock.GetUtcNow());
+            request.Message, request.Address, template.Id, template.Version, template.Accent, elements,
+            new EventSchedule(request.EventDate, request.EventTime, request.EventEndTime),
+            clock.GetUtcNow());
         db.Drafts.Add(draft);
         await db.SaveChangesAsync(ct);
-        return Results.Created($"/api/invitations/{draft.Id}", new DraftResponse(draft.Id, draft.Title,
-            draft.BrideName, draft.GroomName, draft.Message, draft.TemplateId, draft.TemplateVersion, draft.Accent, draft.CreatedAt));
+        // Mapped in one place so create and update cannot drift apart in what they hand back.
+        return Results.Created($"/api/invitations/{draft.Id}", UpdateDraft.Endpoint.Map(draft));
     }
 }

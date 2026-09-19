@@ -9,6 +9,8 @@ public static class TemplateModule
         services.AddDbContext<TemplatesDbContext>(o => o.UseSqlServer(connectionString,
             sql => sql.MigrationsHistoryTable("__EFMigrationsHistory", "templates")));
         services.AddScoped<ITemplateCatalog, Features.ListTemplates.TemplateCatalog>();
+        services.AddScoped<IOccasionCatalog, Features.ListOccasions.OccasionCatalog>();
+        services.AddScoped<IPoemCatalog, Features.ListPoems.PoemCatalog>();
         return services;
     }
 }

@@ -1,74 +1,509 @@
 @page "/studio"
+@page "/studio/{DraftId:guid}"
 @using System.Net.Http.Json
 @using DigiCard.Contracts.Invitations
 @using DigiCard.Contracts.Templates
 @using DigiCard.Web.Client.Components
-@using Microsoft.AspNetCore.Authorization
-@attribute [Authorize]
+@using DigiCard.Web.Client.Editor
+@using Microsoft.Extensions.Logging
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@implements IDisposable
 @inject HttpClient Http
 @inject NavigationManager Navigation
+@inject ILogger<Editor> Logger
+
+@* Designing needs no account. Only keeping a card does - the save button is where the sign-in
+   prompt appears, not the front door. Nobody registers for something they have not seen yet. *@
+
 <PageTitle>استودیوی کارت | دیجی‌کارت</PageTitle>
-<h1>دعوت‌نامه شما</h1>
-<p>متن را تغییر دهید و نتیجه را همان لحظه ببینید.</p>
+
 @if (templates is null)
 {
-    <p role="status">@(error ?? "در حال دریافت قالب‌ها…")</p>
+    <p class="empty-note" role="status">@(error ?? "در حال دریافت قالب‌ها…")</p>
+}
+else if (templates.Count == 0)
+{
+    <p class="empty-note" role="status">هیچ قالبی در دسترس نیست.</p>
 }
 else
 {
-    <div class="studio-grid">
-        <EditForm Model="model" OnValidSubmit="SaveAsync" FormName="draft">
-            <DataAnnotationsValidator /><ValidationSummary />
-            <label for="template">قالب</label>
-            <InputSelect id="template" @bind-Value="model.TemplateId">
-                @foreach (var t in templates) { <option value="@t.Id">@t.Name</option> }
-            </InputSelect>
-            <label for="title">عنوان پروژه</label><InputText id="title" @bind-Value="model.Title" maxlength="100" />
-            <label for="bride">نام عروس</label><input id="bride" @bind="model.BrideName" @bind:event="oninput" maxlength="80" />
-            <label for="groom">نام داماد</label><input id="groom" @bind="model.GroomName" @bind:event="oninput" maxlength="80" />
-            <label for="message">متن دعوت</label><textarea id="message" @bind="model.Message" @bind:event="oninput" maxlength="1000"></textarea>
-            <button type="submit" disabled="@saving">@(saving ? "در حال ذخیره…" : "ساخت پیش‌نویس")</button>
-            @if (error is not null) { <p role="alert">@error</p> }
-        </EditForm>
-        <CardPreview BrideName="@model.BrideName" GroomName="@model.GroomName" Message="@model.Message" Accent="@Accent" />
+    <div class="ed-bar">
+        <div class="ed-bar-group">
+            <label class="ed-inline">
+                قالب
+                <select @onchange="OnTemplateChanged">
+                    @foreach (var group in templates.GroupBy(t => t.Family))
+                    {
+                        <optgroup label="@FamilyTitle(group.Key)">
+                            @foreach (var t in group)
+                            {
+                                <option value="@t.Id" selected="@(t.Id == templateId)">@t.Name</option>
+                            }
+                        </optgroup>
+                    }
+                </select>
+            </label>
+        </div>
+
+        <div class="ed-bar-group">
+            <button type="button" disabled="@(!state.CanUndo)" @onclick="state.Undo" title="واگرد">↶</button>
+            <button type="button" disabled="@(!state.CanRedo)" @onclick="state.Redo" title="از نو">↷</button>
+        </div>
+
+        <div class="ed-bar-group ed-bar-add">
+            @foreach (var (role, title) in Addable)
+            {
+                <button type="button" disabled="@(!state.CanAdd(role))"
+                        @onclick="@(() => state.Add(role))">+ @title</button>
+            }
+        </div>
+
+        <div class="ed-bar-group ed-bar-end">
+            @if (DraftId is not null)
+            {
+                <a class="btn-quiet" href="/my-cards">کارت‌های من</a>
+            }
+            <button type="button" class="btn-primary" disabled="@saving" @onclick="SaveAsync">
+                @(saving ? "در حال ذخیره…" : DraftId is null ? "ذخیره کارت" : "ذخیره تغییرات")
+            </button>
+        </div>
+    </div>
+
+    @if (notice is not null)
+    {
+        <p class="ed-notice" role="alert">
+            @notice
+            @if (needsLogin)
+            {
+                <a href="@LoginUrl">ورود یا ثبت‌نام</a>
+            }
+        </p>
+    }
+
+    <div class="ed-layout">
+        <aside class="ed-content">
+            <h3>متن کارت</h3>
+
+            <label>عنوان پروژه
+                <input @bind="title" maxlength="100" />
+            </label>
+
+            <label>@PrimaryLabel
+                <input @bind="brideName" @bind:event="oninput" maxlength="80" />
+            </label>
+
+            @if (occasion is null || occasion.HasSecondName)
+            {
+                <label>@SecondaryLabel
+                    <input @bind="groomName" @bind:event="oninput" maxlength="80" />
+                </label>
+            }
+
+            <label>متن دعوت
+                <textarea @bind="message" @bind:event="oninput" maxlength="1000" rows="3"></textarea>
+            </label>
+
+            <label>نشانی
+                <textarea @bind="address" @bind:event="oninput" maxlength="300" rows="2"></textarea>
+            </label>
+
+            <fieldset class="ed-date">
+                <legend>تاریخ مراسم</legend>
+                <div class="ed-grid3">
+                    <label>سال<input type="number" min="1300" max="1500" @bind="jalaliYear" @bind:event="oninput" /></label>
+                    <label>ماه<input type="number" min="1" max="12" @bind="jalaliMonth" @bind:event="oninput" /></label>
+                    <label>روز<input type="number" min="1" max="31" @bind="jalaliDay" @bind:event="oninput" /></label>
+                </div>
+                @if (jalaliYear is not null && EventDate is null)
+                {
+                    <p class="ed-hint is-warned">این تاریخ وجود ندارد.</p>
+                }
+                @* Bound as a TimeOnly, not as text: Blazor formats a type="time" input through
+                   the date/time converter, so a string field cannot be bound here at all. *@
+                <div class="ed-grid2">
+                    <label>ساعت شروع<input type="time" @bind="eventTime" /></label>
+                    <label>تا ساعت<input type="time" @bind="eventEndTime" /></label>
+                </div>
+                @if (eventEndTime is not null && eventTime is null)
+                {
+                    <p class="ed-hint is-warned">ساعت شروع را هم بنویسید.</p>
+                }
+            </fieldset>
+
+            @if (state.Selected is { } selected && CardRole.CarriesOwnText(selected.Role))
+            {
+                <fieldset>
+                    <legend>متن این بخش</legend>
+                    @* The gesture brackets the whole time the box has focus, so typing a
+                       sentence is one undo step rather than forty. *@
+                    <textarea rows="3" maxlength="600" value="@selected.Text"
+                              @onfocus="state.BeginGesture"
+                              @onblur="state.EndGesture"
+                              @oninput="@(e => state.Update(el => el with { Text = (string?)e.Value }))"></textarea>
+
+                    @if (selected.Role == CardRole.Poem)
+                    {
+                        <label>شاعر
+                            <input maxlength="80" value="@selected.Caption"
+                                   @onfocus="state.BeginGesture"
+                                   @onblur="state.EndGesture"
+                                   @oninput="@(e => state.Update(el => el with { Caption = (string?)e.Value }))" />
+                        </label>
+
+                        @if (poems.Count > 0)
+                        {
+                            <div class="ed-poems">
+                                @foreach (var poem in poems)
+                                {
+                                    <button type="button" class="ed-poem card-font-nastaliq"
+                                            @onclick="@(() => UsePoem(poem))">
+                                        <span class="ed-poem-text">@poem.Text</span>
+                                        <span class="ed-poem-poet">@poem.Poet</span>
+                                    </button>
+                                }
+                            </div>
+                        }
+                    }
+                </fieldset>
+            }
+        </aside>
+
+        <EditorCanvas State="state"
+                      Template="Selected"
+                      Occasion="occasion"
+                      BrideName="@brideName"
+                      GroomName="@groomName"
+                      Message="@message"
+                      Address="@address"
+                      EventDate="EventDate"
+                      EventTime="eventTime"
+                      EventEndTime="eventEndTime" />
+
+        <StylePanel State="state" />
     </div>
 }
+
 @code {
+    /// <summary>Set when an already-saved card is being opened again.</summary>
+    [Parameter] public Guid? DraftId { get; set; }
+
     [SupplyParameterFromQuery] public Guid? TemplateId { get; set; }
-    private CreateDraftRequest model = new();
+
+    private readonly EditorState state = new();
+
     private List<TemplateSummary>? templates;
+    private List<OccasionSummary> occasions = [];
+    private List<PoemSummary> poems = [];
+
+    private Guid templateId;
+    private OccasionSummary? occasion;
+
+    private string title = "دعوت عروسی ما";
+    private string brideName = "";
+    private string groomName = "";
+    private string message = "";
+    private string address = "";
+
+    private int? jalaliYear;
+    private int? jalaliMonth;
+    private int? jalaliDay;
+    private TimeOnly? eventTime;
+    private TimeOnly? eventEndTime;
+
+    private string rowVersion = "";
+
     private bool saving;
+    private bool needsLogin;
     private string? error;
-    private string Accent => templates?.FirstOrDefault(t => t.Id == model.TemplateId)?.Accent ?? "#52796f";
+    private string? notice;
+
+    private TemplateSummary? Selected => templates?.FirstOrDefault(t => t.Id == templateId);
+
+    private string PrimaryLabel => occasion?.PrimaryLabel ?? "نام عروس";
+    private string SecondaryLabel => occasion?.SecondaryLabel ?? "نام داماد";
+
+    private string LoginUrl => $"/Account/Login?returnUrl={Uri.EscapeDataString(Navigation.Uri)}";
+
+    /// <summary>Null while the three boxes do not yet describe a day that exists.</summary>
+    private DateOnly? EventDate =>
+        jalaliYear is { } y && jalaliMonth is { } m && jalaliDay is { } d &&
+        PersianDate.TryFromJalali(y, m, d, out var date) ? date : null;
+
+
+    private static readonly (string Role, string Title)[] Addable =
+    [
+        (CardRole.Poem, "شعر"),
+        (CardRole.Text, "متن"),
+        (CardRole.Date, "تاریخ"),
+        (CardRole.Time, "ساعت"),
+        (CardRole.Address, "نشانی"),
+        (CardRole.Photo, "عکس"),
+        (CardRole.Divider, "خط"),
+    ];
+
     protected override async Task OnInitializedAsync()
     {
+        state.Changed += StateHasChanged;
+
         try
         {
             templates = await Http.GetFromJsonAsync<List<TemplateSummary>>("api/templates") ?? [];
-            model.TemplateId = templates.FirstOrDefault(t => t.Id == TemplateId)?.Id ?? templates.FirstOrDefault()?.Id ?? Guid.Empty;
+            occasions = await Http.GetFromJsonAsync<List<OccasionSummary>>("api/occasions") ?? [];
         }
-        catch (HttpRequestException) { error = "دریافت قالب‌ها انجام نشد. صفحه را دوباره باز کنید."; }
+        catch (HttpRequestException)
+        {
+            error = "دریافت قالب‌ها انجام نشد. صفحه را دوباره باز کنید.";
+            return;
+        }
+
+        if (DraftId is { } draftId && await LoadDraftAsync(draftId)) return;
+
+        templateId = templates.FirstOrDefault(t => t.Id == TemplateId)?.Id
+            ?? templates.FirstOrDefault()?.Id
+            ?? Guid.Empty;
+
+        await LoadTemplateAsync();
     }
+
+    /// <summary>
+    /// Opens a saved card. Everything comes from the draft, including its arrangement - the
+    /// template supplies the artwork and nothing else, or reopening a card would quietly undo
+    /// whatever was moved before it was saved.
+    /// </summary>
+    private async Task<bool> LoadDraftAsync(Guid draftId)
+    {
+        DraftResponse? draft = null;
+        var unauthorized = false;
+
+        try
+        {
+            using var response = await Http.GetAsync($"api/invitations/{draftId}");
+
+            unauthorized = response.StatusCode is System.Net.HttpStatusCode.Unauthorized
+                or System.Net.HttpStatusCode.Forbidden;
+
+            if (response.IsSuccessStatusCode)
+                draft = await ReadJsonAsync<DraftResponse>(response);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            notice = "ارتباط برقرار نشد. صفحه را دوباره باز کنید.";
+            return false;
+        }
+
+        if (draft is null)
+        {
+            needsLogin = unauthorized;
+            notice = unauthorized
+                ? "برای باز کردن این کارت وارد حساب خود شوید."
+                : "این کارت پیدا نشد یا متعلق به حساب شما نیست.";
+            return false;
+        }
+
+        templateId = draft.TemplateId;
+        rowVersion = draft.RowVersion;
+
+        title = draft.Title;
+        brideName = draft.BrideName;
+        groomName = draft.GroomName;
+        message = draft.Message;
+        address = draft.Address;
+
+        if (draft.EventDate is { } date)
+        {
+            var parts = PersianDate.Split(date);
+            (jalaliYear, jalaliMonth, jalaliDay) = (parts.Year, parts.Month, parts.Day);
+        }
+
+        eventTime = draft.EventTime;
+        eventEndTime = draft.EventEndTime;
+
+        occasion = occasions.FirstOrDefault(o => o.Slug == Selected?.Category);
+        await LoadPoemsAsync();
+
+        state.Load(draft.Elements);
+        return true;
+    }
+
+    private async Task OnTemplateChanged(ChangeEventArgs e)
+    {
+        if (!Guid.TryParse(e.Value as string, out var id)) return;
+
+        templateId = id;
+        await LoadTemplateAsync();
+    }
+
+    /// <summary>
+    /// Switching template starts from that template's saved arrangement. The text the user has
+    /// typed is kept - it belongs to the card, not to the design.
+    /// </summary>
+    private async Task LoadTemplateAsync()
+    {
+        state.Load(Selected?.Elements);
+        occasion = occasions.FirstOrDefault(o => o.Slug == Selected?.Category);
+
+        if (string.IsNullOrWhiteSpace(message) && occasion is not null)
+            message = occasion.DefaultMessage;
+
+        await LoadPoemsAsync();
+    }
+
+    private async Task LoadPoemsAsync()
+    {
+        try
+        {
+            poems = await Http.GetFromJsonAsync<List<PoemSummary>>(
+                $"api/poems?occasion={Uri.EscapeDataString(occasion?.Slug ?? "")}") ?? [];
+        }
+        catch (HttpRequestException)
+        {
+            poems = [];
+        }
+    }
+
+    // The poet is shown in the picker so you know which verse you are choosing, but it is not
+    // written onto the card - most Persian invitations carry the verse alone. The "شاعر" field is
+    // there for whoever does want the attribution.
+    private void UsePoem(PoemSummary poem) =>
+        state.Update(el => el with { Text = poem.Text, Caption = null });
+
     private async Task SaveAsync()
     {
         if (saving) return;
-        saving = true; error = null;
+
+        saving = true;
+        notice = null;
+        needsLogin = false;
+
         try
         {
-            var csrf = await Http.GetFromJsonAsync<CsrfToken>("api/antiforgery");
-            using var request = new HttpRequestMessage(HttpMethod.Post, "api/invitations/") { Content = JsonContent.Create(model) };
-            request.Headers.Add("X-CSRF-TOKEN", csrf!.Token);
-            using var response = await Http.SendAsync(request);
+            var csrf = await GetTokenAsync();
+            if (csrf is null)
+            {
+                needsLogin = true;
+                notice = "برای نگه‌داشتن این کارت وارد حساب خود شوید.";
+                return;
+            }
+
+            var request = new UpdateDraftRequest
+            {
+                TemplateId = templateId,
+                Title = title,
+                BrideName = string.IsNullOrWhiteSpace(brideName) ? PrimaryLabel : brideName,
+                GroomName = string.IsNullOrWhiteSpace(groomName) ? SecondaryLabel : groomName,
+                Message = message,
+                Address = address,
+                // The whole point of the editor: the arrangement travels with the card.
+                Elements = state.Json,
+                EventDate = EventDate,
+                EventTime = eventTime,
+                EventEndTime = eventEndTime,
+                RowVersion = rowVersion,
+            };
+
+            // A card opened from "my cards" is saved over. Anything else is a new card.
+            var isUpdate = DraftId is not null;
+            var method = isUpdate ? HttpMethod.Put : HttpMethod.Post;
+            var url = isUpdate ? $"api/invitations/{DraftId}" : "api/invitations/";
+
+            using var call = new HttpRequestMessage(method, url) { Content = JsonContent.Create(request) };
+            call.Headers.Add("X-CSRF-TOKEN", csrf.Token);
+
+            using var response = await Http.SendAsync(call);
+
             if (response.IsSuccessStatusCode)
             {
-                var draft = await response.Content.ReadFromJsonAsync<DraftResponse>();
-                Navigation.NavigateTo($"/drafts/{draft!.Id}");
+                var draft = await ReadJsonAsync<DraftResponse>(response);
+
+                if (isUpdate)
+                {
+                    // Stay where you are - being thrown to another page after every save would
+                    // make small corrections miserable. Take the new row version and carry on.
+                    rowVersion = draft?.RowVersion ?? rowVersion;
+                    state.MarkSaved();
+                    notice = "ذخیره شد.";
+                }
+                else
+                {
+                    // Navigating to /studio/{id} re-uses this component rather than rebuilding it,
+                    // so the row version has to be picked up here - otherwise the next save would
+                    // go out without one and skip the concurrency check entirely.
+                    rowVersion = draft!.RowVersion;
+                    state.MarkSaved();
+                    Navigation.NavigateTo($"/studio/{draft.Id}");
+                }
+
+                return;
             }
-            else { error = "ذخیره انجام نشد. اطلاعات و وضعیت ورود خود را بررسی کنید."; }
+
+            if (response.StatusCode is System.Net.HttpStatusCode.Conflict)
+            {
+                // Both versions are someone's work. Refusing and saying so is the only honest
+                // option; quietly winning would throw away whatever the other tab wrote.
+                notice = "این کارت جای دیگری تغییر کرده است. صفحه را دوباره باز کنید تا آخرین نسخه را ببینید.";
+                return;
+            }
+
+            // The antiforgery call and the save both need a signed-in user, so this is the normal
+            // path for a visitor who has just finished designing.
+            needsLogin = response.StatusCode is System.Net.HttpStatusCode.Unauthorized
+                or System.Net.HttpStatusCode.Forbidden;
+
+            notice = needsLogin
+                ? "برای نگه‌داشتن این کارت وارد حساب خود شوید."
+                : "ذخیره انجام نشد. دوباره تلاش کنید.";
         }
-        catch (HttpRequestException) { error = "ارتباط برقرار نشد. دوباره تلاش کنید."; }
-        finally { saving = false; }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            // Deliberately broad. An unhandled exception here stops the component re-rendering,
+            // which leaves the button frozen on "در حال ذخیره…" and tells the user nothing - the
+            // exact bug this replaced. Whatever goes wrong, the editor says so and stays usable.
+            Logger.LogWarning(exception, "Saving the card failed.");
+            notice = "ذخیره انجام نشد. دوباره تلاش کنید.";
+        }
+        finally
+        {
+            saving = false;
+        }
     }
+
+    /// <summary>
+    /// Reads the antiforgery token, or null when the answer was not a token. Not GetFromJsonAsync:
+    /// that throws on a non-JSON body, and "you are not signed in" is exactly the case where the
+    /// body might not be JSON.
+    /// </summary>
+    private async Task<CsrfToken?> GetTokenAsync()
+    {
+        using var response = await Http.GetAsync("api/antiforgery");
+        return response.IsSuccessStatusCode ? await ReadJsonAsync<CsrfToken>(response) : null;
+    }
+
+    private static async Task<T?> ReadJsonAsync<T>(HttpResponseMessage response)
+    {
+        if (response.Content.Headers.ContentType?.MediaType != "application/json") return default;
+
+        try
+        {
+            return await response.Content.ReadFromJsonAsync<T>();
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return default;
+        }
+    }
+
+    public void Dispose() => state.Changed -= StateHasChanged;
+
+    // Duplicated from the server's TemplateDisplay on purpose: this component runs in the
+    // browser and must not reference the host assembly.
+    private static string FamilyTitle(string family) => family switch
+    {
+        "minimal" => "مینیمال",
+        "watercolor" => "گل‌آرایی آبرنگی",
+        "persian" => "کلاسیک ایرانی",
+        "photo" => "عکس‌محور",
+        _ => family,
+    };
+
     private sealed record CsrfToken(string Token);
 }
